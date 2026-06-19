@@ -22,7 +22,7 @@ export interface RecipeStep {
   id: string
   order: number
   description: string
-  duration?: number // minutes
+  duration?: number
 }
 
 export interface Nutrition {
@@ -40,13 +40,12 @@ export interface Recipe {
   description?: string
   ingredients: Ingredient[]
   steps: RecipeStep[]
-  cookTime?: number // minutes
-  prepTime?: number // minutes
+  cookTime?: number
+  prepTime?: number
   servings?: number
   difficulty?: 'easy' | 'medium' | 'hard'
   nutrition?: Nutrition
   tags: string[]
-  imageUrl?: string
   isFavourite: boolean
   createdAt: number
   updatedAt: number
@@ -60,7 +59,6 @@ export interface Bookmark {
   title: string
   description?: string
   favicon?: string
-  imageUrl?: string
   tags: string[]
   isFavourite: boolean
   createdAt: number
@@ -73,11 +71,11 @@ export interface PasswordEntry {
   userId: string
   site: string
   username: string
-  encryptedPassword: string // AES-256 encrypted
+  encryptedPassword: string
   notes?: string
   tags: string[]
   isFavourite: boolean
-  expiresAt?: number // timestamp
+  expiresAt?: number
   createdAt: number
   updatedAt: number
 }
@@ -88,10 +86,9 @@ export interface Note {
   userId: string
   title: string
   content: string
-  imageUrl?: string
   tags: string[]
   isFavourite: boolean
-  reminderAt?: number // timestamp
+  reminderAt?: number
   createdAt: number
   updatedAt: number
 }
@@ -111,5 +108,5 @@ export interface Reminder {
 export interface AppSettings {
   language: Language
   claudeApiKey?: string
-  passwordLockTimeout: number // minutes
+  passwordLockTimeout: number
 }
