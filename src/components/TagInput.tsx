@@ -21,7 +21,7 @@ export default function TagInput({ tags, onChange, suggestions = [] }: TagInputP
   }
 
   const removeTag = (tag: string) => {
-    onChange(tags.filter((t) => t !== tag))
+    onChange(tags.filter((item) => item !== tag))
   }
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {

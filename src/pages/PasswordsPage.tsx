@@ -5,6 +5,7 @@ import { usePasswordStore } from '../stores/passwordStore'
 import PasswordCard from '../components/PasswordCard'
 import PasswordModal from '../components/PasswordModal'
 import PasswordLockScreen from '../components/PasswordLockScreen'
+import ChangeMasterPasswordModal from '../components/ChangeMasterPasswordModal'
 import type { PasswordEntry } from '../types'
 
 export default function PasswordsPage() {
@@ -12,6 +13,7 @@ export default function PasswordsPage() {
   const { entries, loading, error, isLocked, lock, init, teardown, checkIdleTimeout, recordActivity } = usePasswordStore()
 
   const [showModal, setShowModal] = useState(false)
+  const [showChangePw, setShowChangePw] = useState(false)
   const [editTarget, setEditTarget] = useState<PasswordEntry | undefined>()
   const [search, setSearch] = useState('')
   const [filterTag, setFilterTag] = useState<string | null>(null)
@@ -88,6 +90,9 @@ export default function PasswordsPage() {
         <h1>{t('password', 'title')}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span className="item-count">{entries.length}</span>
+          <button className="btn-outline-sm" style={{fontSize:11,padding:'4px 8px'}} onClick={() => setShowChangePw(true)}>
+            更換主密碼
+          </button>
           <button className="icon-btn" onClick={lock} title={t('password', 'lock')}>
             <Lock size={18} />
           </button>
@@ -119,6 +124,9 @@ export default function PasswordsPage() {
 
       {showModal && (
         <PasswordModal entry={editTarget} onClose={() => setShowModal(false)} allTags={allTags} />
+      )}
+      {showChangePw && (
+        <ChangeMasterPasswordModal onClose={() => setShowChangePw(false)} />
       )}
     </div>
   )

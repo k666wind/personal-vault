@@ -68,7 +68,14 @@ export default function BookmarkModal({ bookmark, onClose, allTags }: Props) {
       }
       onClose()
     } catch (e) {
-      setError('儲存失敗，請重試')
+      const msg = e instanceof Error ? e.message : ''
+      if (msg.includes('permission') || msg.includes('Missing or insufficient')) {
+        setError('權限錯誤：請確認 Firestore Rules 已設定正確')
+      } else if (msg.includes('network') || msg.includes('unavailable')) {
+        setError('網絡錯誤：請檢查網絡連接')
+      } else {
+        setError('儲存失敗：' + (msg || '未知錯誤'))
+      }
     } finally {
       setSaving(false)
     }

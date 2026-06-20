@@ -1,15 +1,79 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Eye, EyeOff } from 'lucide-react'
+import { ChevronLeft, Eye, EyeOff, Download, Upload, Loader2 } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useAuth } from '../hooks/useAuth'
+import { useBookmarkStore } from '../stores/bookmarkStore'
+import { useNoteStore } from '../stores/noteStore'
+import { useRecipeStore } from '../stores/recipeStore'
+import { usePasswordStore } from '../stores/passwordStore'
+import { exportJson, exportCsv, importJson, type VaultExport } from '../lib/exportImport'
+import { addBookmark } from '../lib/bookmarkService'
+import { addNote } from '../lib/noteService'
+import { addRecipe } from '../lib/recipeService'
+import { addPasswordEntry } from '../lib/passwordService'
 
 export default function SettingsPage() {
-  const { t, settings, setLanguage, setClaudeApiKey, setLockTimeout } = useAppStore()
+  const { t, settings, setLanguage, setClaudeApiKey, setLockTimeout, user } = useAppStore()
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState(settings.claudeApiKey || '')
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
+  const importRef = useRef<HTMLInputElement>(null)
+
+  const { bookmarks } = useBookmarkStore()
+  const { notes } = useNoteStore()
+  const { recipes } = useRecipeStore()
+  const { entries: passwords } = usePasswordStore()
+
+  const handleExportJson = () => {
+    exportJson({
+      version: 1,
+      exportedAt: Date.now(),
+      recipes,
+      bookmarks,
+      notes,
+      passwords,
+    })
+  }
+
+  const handleExportCsv = () => exportCsv(bookmarks, notes)
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setImporting(true)
+    setImportMsg('')
+    try {
+      const data: VaultExport = await importJson(file)
+      let count = 0
+
+      for (const b of (data.bookmarks || [])) {
+        await addBookmark(user.uid, { url: b.url, title: b.title, description: b.description, favicon: b.favicon, tags: b.tags, isFavourite: b.isFavourite })
+        count++
+      }
+      for (const n of (data.notes || [])) {
+        await addNote(user.uid, { title: n.title, content: n.content, tags: n.tags, isFavourite: n.isFavourite, reminderAt: n.reminderAt })
+        count++
+      }
+      for (const r of (data.recipes || [])) {
+        await addRecipe(user.uid, { title: r.title, description: r.description, ingredients: r.ingredients, steps: r.steps, cookTime: r.cookTime, prepTime: r.prepTime, servings: r.servings, difficulty: r.difficulty, nutrition: r.nutrition, tags: r.tags, isFavourite: r.isFavourite })
+        count++
+      }
+      for (const p of (data.passwords || [])) {
+        await addPasswordEntry(user.uid, { site: p.site, username: p.username, encryptedPassword: p.encryptedPassword, notes: p.notes, tags: p.tags, isFavourite: p.isFavourite, expiresAt: p.expiresAt })
+        count++
+      }
+      setImportMsg(`成功匯入 ${count} 筆資料`)
+    } catch (e) {
+      setImportMsg('匯入失敗：' + (e instanceof Error ? e.message : '未知錯誤'))
+    } finally {
+      setImporting(false)
+      if (importRef.current) importRef.current.value = ''
+    }
+  }
 
   return (
     <div className="page">
@@ -27,18 +91,8 @@ export default function SettingsPage() {
         <div className="settings-section">
           <p className="settings-label">{t('settings', 'language')}</p>
           <div className="lang-toggle">
-            <button
-              className={settings.language === 'zh' ? 'active' : ''}
-              onClick={() => setLanguage('zh')}
-            >
-              中文
-            </button>
-            <button
-              className={settings.language === 'en' ? 'active' : ''}
-              onClick={() => setLanguage('en')}
-            >
-              English
-            </button>
+            <button className={settings.language === 'zh' ? 'active' : ''} onClick={() => setLanguage('zh')}>中文</button>
+            <button className={settings.language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')}>English</button>
           </div>
         </div>
 
@@ -47,41 +101,63 @@ export default function SettingsPage() {
           <p className="settings-label">{t('settings', 'claudeApiKey')}</p>
           <p className="settings-hint">{t('settings', 'claudeApiKeyHint')}</p>
           <div className="api-key-row">
-            <input
-              type={showApiKey ? 'text' : 'password'}
-              className="input"
-              placeholder="sk-ant-..."
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              onBlur={() => setClaudeApiKey(apiKeyInput)}
-            />
+            <input type={showApiKey ? 'text' : 'password'} className="input" placeholder="sk-ant-..."
+              value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)}
+              onBlur={() => setClaudeApiKey(apiKeyInput)} />
             <button className="icon-btn" onClick={() => setShowApiKey(!showApiKey)}>
               {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
 
-        {/* Password lock timeout */}
+        {/* Lock timeout */}
         <div className="settings-section">
           <p className="settings-label">{t('settings', 'lockTimeout')}</p>
           <div className="timeout-options">
             {[1, 5, 10, 30].map((mins) => (
-              <button
-                key={mins}
+              <button key={mins}
                 className={`timeout-btn ${settings.passwordLockTimeout === mins ? 'active' : ''}`}
-                onClick={() => setLockTimeout(mins)}
-              >
+                onClick={() => setLockTimeout(mins)}>
                 {mins}
               </button>
             ))}
           </div>
         </div>
 
+        {/* Export */}
+        <div className="settings-section">
+          <p className="settings-label">{t('settings', 'exportData')}</p>
+          <p className="settings-hint">
+            食譜 {recipes.length} · 網址 {bookmarks.length} · 筆記 {notes.length} · 密碼 {passwords.length}
+          </p>
+          <div className="export-btns">
+            <button className="btn-export" onClick={handleExportJson}>
+              <Download size={15} /> JSON（完整）
+            </button>
+            <button className="btn-export" onClick={handleExportCsv}>
+              <Download size={15} /> CSV（網址+筆記）
+            </button>
+          </div>
+        </div>
+
+        {/* Import */}
+        <div className="settings-section">
+          <p className="settings-label">{t('settings', 'importData')}</p>
+          <p className="settings-hint">只支援 Vault JSON 格式，資料會加到現有記錄</p>
+          <button className="btn-export" onClick={() => importRef.current?.click()} disabled={importing}>
+            {importing ? <><Loader2 size={14} className="spin" /> 匯入中...</> : <><Upload size={15} /> 選擇 JSON 檔案</>}
+          </button>
+          <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+          {importMsg && (
+            <p className={`import-msg ${importMsg.includes('失敗') ? 'error-msg' : 'success-msg'}`}>
+              {importMsg}
+            </p>
+          )}
+        </div>
+
         {/* Sign out */}
         <div className="settings-section">
-          <button className="btn-danger" onClick={signOut}>
-            {t('auth', 'signOut')}
-          </button>
+          <button className="btn-danger" onClick={signOut}>{t('auth', 'signOut')}</button>
         </div>
 
       </div>
