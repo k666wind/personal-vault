@@ -23,9 +23,9 @@ export default function BookmarksPage() {
 
   const allTags = useMemo(() => {
     const set = new Set<string>()
-    bookmarks.forEach((b) => b.tags.forEach((t) => set.add(t)))
+    bookmarks.forEach((b) => (b.tags || []).forEach((t) => set.add(t)))
     return [...set].sort()
-  }, [bookmarks])
+  }, [bookmarks.map(b => b.tags?.join(',')).join('|')])
 
   const filtered = useMemo(() => {
     return bookmarks.filter((b) => {

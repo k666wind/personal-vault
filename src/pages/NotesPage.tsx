@@ -23,9 +23,9 @@ export default function NotesPage() {
 
   const allTags = useMemo(() => {
     const set = new Set<string>()
-    notes.forEach((n) => n.tags.forEach((t) => set.add(t)))
+    notes.forEach((n) => (n.tags || []).forEach((t) => set.add(t)))
     return [...set].sort()
-  }, [notes])
+  }, [notes.map(n => n.tags?.join(',')).join('|')])
 
   const filtered = useMemo(() => {
     return notes.filter((n) => {

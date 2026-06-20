@@ -36,9 +36,9 @@ export default function PasswordsPage() {
 
   const allTags = useMemo(() => {
     const set = new Set<string>()
-    entries.forEach((e) => e.tags.forEach((t) => set.add(t)))
+    entries.forEach((e) => (e.tags || []).forEach((t) => set.add(t)))
     return [...set].sort()
-  }, [entries])
+  }, [entries.map(e => e.tags?.join(',')).join('|')])
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
