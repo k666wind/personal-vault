@@ -10,6 +10,7 @@ import {
 interface BookmarkStore {
   bookmarks: Bookmark[]
   loading: boolean
+  error: string | null
   unsubscribe: (() => void) | null
 
   init: (userId: string) => void
@@ -24,20 +25,31 @@ interface BookmarkStore {
 export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
   bookmarks: [],
   loading: true,
+  error: null,
   unsubscribe: null,
 
   init: (userId) => {
     get().teardown()
-    set({ loading: true })
-    const unsub = subscribeBookmarks(userId, (bookmarks) => {
-      set({ bookmarks, loading: false })
-    })
+    set({ loading: true, error: null })
+    const unsub = subscribeBookmarks(
+      userId,
+      (bookmarks) => {
+        set({ bookmarks, loading: false, error: null })
+      },
+      (err: { code?: string; message: string }) => {
+        if (err.code === 'failed-precondition') {
+          set({ loading: false, error: 'index-building' })
+        } else {
+          set({ loading: false, error: err.message })
+        }
+      }
+    )
     set({ unsubscribe: unsub })
   },
 
   teardown: () => {
     get().unsubscribe?.()
-    set({ unsubscribe: null, bookmarks: [], loading: true })
+    set({ unsubscribe: null, bookmarks: [], loading: true, error: null })
   },
 
   add: async (userId, data) => {

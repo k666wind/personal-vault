@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Search, Star, Tag, X } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, RefreshCw } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import BookmarkCard from '../components/BookmarkCard'
@@ -8,7 +8,7 @@ import type { Bookmark } from '../types'
 
 export default function BookmarksPage() {
   const { t, user } = useAppStore()
-  const { bookmarks, loading, init, teardown } = useBookmarkStore()
+  const { bookmarks, loading, error, init, teardown } = useBookmarkStore()
 
   const [showModal, setShowModal] = useState(false)
   const [editTarget, setEditTarget] = useState<Bookmark | undefined>()
@@ -46,6 +46,59 @@ export default function BookmarksPage() {
 
   const openAdd = () => { setEditTarget(undefined); setShowModal(true) }
   const openEdit = (b: Bookmark) => { setEditTarget(b); setShowModal(true) }
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="empty-page">
+          <div className="spinner" />
+          <p className="loading-text">{t('common', 'loading')}</p>
+        </div>
+      )
+    }
+
+    if (error === 'index-building') {
+      return (
+        <div className="empty-page">
+          <RefreshCw size={36} className="empty-icon building-icon" />
+          <p className="error-state-title">Firebase Index 建立中</p>
+          <p className="error-state-hint">通常需要 1–3 分鐘，完成後自動載入</p>
+          <button className="btn-outline-sm" onClick={() => user && init(user.uid)}>
+            重新嘗試
+          </button>
+        </div>
+      )
+    }
+
+    if (error) {
+      return (
+        <div className="empty-page">
+          <p className="error-state-title">載入失敗</p>
+          <p className="error-state-hint">{error}</p>
+          <button className="btn-outline-sm" onClick={() => user && init(user.uid)}>
+            重試
+          </button>
+        </div>
+      )
+    }
+
+    if (filtered.length === 0) {
+      return (
+        <div className="empty-page">
+          <div className="empty-icon-wrap">🔗</div>
+          <p>{bookmarks.length === 0 ? '未有網址，點右下角新增' : t('common', 'noResults')}</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="card-list">
+        {filtered.map((b) => (
+          <BookmarkCard key={b.id} bookmark={b} onEdit={openEdit} />
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="page">
@@ -88,22 +141,7 @@ export default function BookmarksPage() {
         ))}
       </div>
 
-      {loading ? (
-        <div className="empty-page">
-          <p className="loading-text">{t('common', 'loading')}</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-page">
-          <div className="empty-icon-wrap">🔗</div>
-          <p>{bookmarks.length === 0 ? '未有網址，點右下角新增' : t('common', 'noResults')}</p>
-        </div>
-      ) : (
-        <div className="card-list">
-          {filtered.map((b) => (
-            <BookmarkCard key={b.id} bookmark={b} onEdit={openEdit} />
-          ))}
-        </div>
-      )}
+      {renderContent()}
 
       <button className="fab" onClick={openAdd} aria-label={t('bookmark', 'add')}>
         <Plus size={24} />

@@ -4,28 +4,27 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Bookmark } from '../types'
+import type { Note } from '../types'
 
-const COL = 'bookmarks'
+const COL = 'notes'
 
-function toBookmark(id: string, data: Record<string, unknown>): Bookmark {
+function toNote(id: string, data: Record<string, unknown>): Note {
   return {
     id,
     userId: data.userId as string,
-    url: data.url as string,
     title: data.title as string,
-    description: (data.description as string) || '',
-    favicon: (data.favicon as string) || '',
+    content: data.content as string,
     tags: (data.tags as string[]) || [],
     isFavourite: (data.isFavourite as boolean) || false,
+    reminderAt: data.reminderAt as number | undefined,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
     updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : Date.now(),
   }
 }
 
-export function subscribeBookmarks(
+export function subscribeNotes(
   userId: string,
-  cb: (bookmarks: Bookmark[]) => void,
+  cb: (notes: Note[]) => void,
   onError?: (err: { code?: string; message: string }) => void
 ) {
   const q = query(
@@ -35,14 +34,14 @@ export function subscribeBookmarks(
   )
   return onSnapshot(
     q,
-    (snap) => { cb(snap.docs.map((d) => toBookmark(d.id, d.data()))) },
+    (snap) => { cb(snap.docs.map((d) => toNote(d.id, d.data()))) },
     (err) => { onError?.({ code: err.code, message: err.message }) }
   )
 }
 
-export async function addBookmark(
+export async function addNote(
   userId: string,
-  data: Omit<Bookmark, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  data: Omit<Note, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ) {
   await addDoc(collection(db, COL), {
     ...data,
@@ -52,16 +51,13 @@ export async function addBookmark(
   })
 }
 
-export async function updateBookmark(
+export async function updateNote(
   id: string,
-  data: Partial<Omit<Bookmark, 'id' | 'userId' | 'createdAt'>>
+  data: Partial<Omit<Note, 'id' | 'userId' | 'createdAt'>>
 ) {
-  await updateDoc(doc(db, COL, id), {
-    ...data,
-    updatedAt: serverTimestamp(),
-  })
+  await updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
 }
 
-export async function deleteBookmark(id: string) {
+export async function deleteNote(id: string) {
   await deleteDoc(doc(db, COL, id))
 }
