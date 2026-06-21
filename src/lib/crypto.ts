@@ -35,6 +35,9 @@ export function verifyMasterPassword(masterPassword: string): boolean {
 export function hasMasterPasswordSet(): boolean {
   return !!localStorage.getItem(VERIFY_KEY)
 }
+export function clearMasterVerifier(): void {
+  localStorage.removeItem(VERIFY_KEY)
+}
 
 // Password strength scorer (0–4)
 export function scorePassword(password: string): 0 | 1 | 2 | 3 | 4 {

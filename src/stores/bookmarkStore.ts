@@ -49,7 +49,7 @@ export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
 
   teardown: () => {
     get().unsubscribe?.()
-    set({ unsubscribe: null, bookmarks: [], loading: true, error: null })
+    set({ unsubscribe: null })
   },
 
   add: async (userId, data) => {

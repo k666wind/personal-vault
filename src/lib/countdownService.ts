@@ -8,12 +8,19 @@ import type { DateCountdown } from '../types'
 
 const COL = 'countdowns'
 
+// Strip undefined values — Firestore rejects them
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
 function toCountdown(id: string, data: Record<string, unknown>): DateCountdown {
   return {
     id,
     userId: data.userId as string,
     title: data.title as string,
-    notes: data.notes as string | undefined,
+    notes: (data.notes as string) || undefined,
     targetDate: data.targetDate as number,
     tags: (data.tags as string[]) || [],
     isFavourite: (data.isFavourite as boolean) || false,
@@ -44,19 +51,21 @@ export async function addCountdown(
   userId: string,
   data: Omit<DateCountdown, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ) {
-  await addDoc(collection(db, COL), {
+  const payload = stripUndefined({
     ...data,
     userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
+  await addDoc(collection(db, COL), payload)
 }
 
 export async function updateCountdown(
   id: string,
   data: Partial<Omit<DateCountdown, 'id' | 'userId' | 'createdAt'>>
 ) {
-  await updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+  const payload = stripUndefined({ ...data, updatedAt: serverTimestamp() })
+  await updateDoc(doc(db, COL, id), payload)
 }
 
 export async function deleteCountdown(id: string) {

@@ -35,7 +35,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 
   teardown: () => {
     get().unsubscribe?.()
-    set({ unsubscribe: null, notes: [], loading: true, error: null })
+    set({ unsubscribe: null })
   },
 
   add: async (userId, data) => { await addNote(userId, data) },

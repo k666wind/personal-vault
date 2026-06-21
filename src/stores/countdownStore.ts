@@ -36,7 +36,7 @@ export const useCountdownStore = create<CountdownStore>((set, get) => ({
 
   cleanup: () => {
     get().unsubscribe?.()
-    set({ unsubscribe: null, items: [] })
+    set({ unsubscribe: null })
   },
 
   add: async (userId, data) => {

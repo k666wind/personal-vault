@@ -3,6 +3,7 @@ import { Lock, Eye, EyeOff } from 'lucide-react'
 import { usePasswordStore } from '../stores/passwordStore'
 import { hasMasterPasswordSet } from '../lib/crypto'
 import { useAppStore } from '../stores/appStore'
+import ResetMasterPasswordModal from './ResetMasterPasswordModal'
 
 interface Props {
   onUnlocked: () => void
@@ -14,6 +15,7 @@ export default function PasswordLockScreen({ onUnlocked }: Props) {
   const [master, setMaster] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
+  const [showReset, setShowReset] = useState(false)
   const isFirstTime = !hasMasterPasswordSet()
 
   const handleUnlock = () => {
@@ -22,7 +24,7 @@ export default function PasswordLockScreen({ onUnlocked }: Props) {
     if (ok) {
       onUnlocked()
     } else {
-      setError('主密碼錯誤')
+      setError(t('password', 'language') === 'en' ? 'Incorrect master password' : '主密碼錯誤')
       setMaster('')
     }
   }
@@ -61,10 +63,29 @@ export default function PasswordLockScreen({ onUnlocked }: Props) {
           {isFirstTime ? '設定主密碼' : t('password', 'unlock')}
         </button>
 
+        {!isFirstTime && (
+          <button
+            onClick={() => setShowReset(true)}
+            style={{
+              fontSize: 13,
+              color: 'var(--color-error)',
+              textDecoration: 'underline',
+              marginTop: 4,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            忘記主密碼？
+          </button>
+        )}
+
         <p className="lock-warning">
           ⚠️ {isFirstTime ? '此密碼無法重設，請記好' : '忘記主密碼將無法存取已儲存嘅密碼'}
         </p>
       </div>
+
+      {showReset && <ResetMasterPasswordModal onClose={() => setShowReset(false)} />}
     </div>
   )
 }

@@ -6,6 +6,14 @@ import {
 import { db } from './firebase'
 import type { Bookmark } from '../types'
 
+
+// Strip undefined values — Firestore rejects them
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
 const COL = 'bookmarks'
 
 function toBookmark(id: string, data: Record<string, unknown>): Bookmark {
@@ -44,12 +52,12 @@ export async function addBookmark(
   userId: string,
   data: Omit<Bookmark, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ) {
-  await addDoc(collection(db, COL), {
+  await addDoc(collection(db, COL), stripUndefined({
     ...data,
     userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  })
+  } as Record<string, unknown>))
 }
 
 export async function updateBookmark(

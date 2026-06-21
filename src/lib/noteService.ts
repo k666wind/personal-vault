@@ -6,6 +6,14 @@ import {
 import { db } from './firebase'
 import type { Note } from '../types'
 
+
+// Strip undefined values — Firestore rejects them
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
 const COL = 'notes'
 
 function toNote(id: string, data: Record<string, unknown>): Note {
@@ -43,12 +51,12 @@ export async function addNote(
   userId: string,
   data: Omit<Note, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ) {
-  await addDoc(collection(db, COL), {
+  await addDoc(collection(db, COL), stripUndefined({
     ...data,
     userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  })
+  } as Record<string, unknown>))
 }
 
 export async function updateNote(

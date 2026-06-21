@@ -56,7 +56,7 @@ export const usePasswordStore = create<PasswordStore>((set, get) => ({
 
   teardown: () => {
     get().unsubscribe?.()
-    set({ unsubscribe: null, entries: [], loading: true, error: null, isLocked: true, masterPassword: null })
+    set({ unsubscribe: null, isLocked: true, masterPassword: null })
   },
 
   unlock: (master) => {

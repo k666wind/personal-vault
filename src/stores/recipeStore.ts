@@ -35,7 +35,7 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
 
   teardown: () => {
     get().unsubscribe?.()
-    set({ unsubscribe: null, recipes: [], loading: true, error: null })
+    set({ unsubscribe: null })
   },
 
   add: async (userId, data) => { await addRecipe(userId, data) },
