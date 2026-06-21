@@ -25,7 +25,7 @@ export default function NotesPage() {
     const set = new Set<string>()
     notes.forEach((n) => (n.tags || []).forEach((t) => set.add(t)))
     return [...set].sort()
-  }, [notes.map(n => n.tags?.join(',')).join('|')])
+  }, [notes])
 
   const filtered = useMemo(() => {
     return notes.filter((n) => {
@@ -55,7 +55,7 @@ export default function NotesPage() {
         <RefreshCw size={36} className="empty-icon building-icon" />
         <p className="error-state-title">Firebase Index 建立中</p>
         <p className="error-state-hint">通常需要 1–3 分鐘，完成後自動載入</p>
-        <button className="btn-outline-sm" onClick={() => user && init(user.uid)}>重新嘗試</button>
+        <button className="btn-outline-sm" onClick={() => user && init(user.uid)}>{t('error', 'retryAgain')}</button>
       </div>
     )
     if (error) return (
@@ -68,7 +68,7 @@ export default function NotesPage() {
     if (filtered.length === 0) return (
       <div className="empty-page">
         <div className="empty-icon-wrap">📝</div>
-        <p>{notes.length === 0 ? '未有筆記，點右下角新增' : t('common', 'noResults')}</p>
+        <p>{notes.length === 0 ? t('note','title') ? t('note','add') : 'Add a note' : t('common', 'noResults')}</p>
       </div>
     )
     return (

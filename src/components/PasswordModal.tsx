@@ -45,9 +45,9 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
   }
 
   const handleSave = async () => {
-    if (!site.trim()) { setError('請輸入網站名稱'); return }
-    if (!username.trim()) { setError('請輸入用戶名'); return }
-    if (!password) { setError('請輸入密碼'); return }
+    if (!site.trim()) { setError(t('password', 'siteRequired')); return }
+    if (!username.trim()) { setError(t('password', 'usernameRequired')); return }
+    if (!password) { setError(t('password', 'passwordRequired')); return }
     setSaving(true)
     try {
       const extra = { notes, tags, expiresAt: expiresAt ? new Date(expiresAt).getTime() : undefined }
@@ -60,11 +60,11 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
     } catch (e) {
       const msg = e instanceof Error ? (e as Error).message : ''
       if (msg.includes('permission') || msg.includes('Missing or insufficient')) {
-        setError('權限錯誤：請確認 Firestore Rules 已設定正確')
+        setError(t('error', 'permissionError'))
       } else if (msg.includes('network') || msg.includes('unavailable')) {
-        setError('網絡錯誤：請檢查網絡連接')
+        setError(t('error', 'networkError'))
       } else {
-        setError('儲存失敗：' + (msg || '未知錯誤'))
+        setError(t('error', 'saveFailed') + (msg || t('error', 'unknownError')))
       }
     } finally {
       setSaving(false)
@@ -130,13 +130,13 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
             {showGenerator && (
               <div className="generator-panel">
                 <div className="gen-row">
-                  <span className="field-label">長度：{genLength}</span>
+                  <span className="field-label">{t('password', 'genLength')}：{genLength}</span>
                   <input type="range" min={8} max={32} value={genLength} onChange={(e) => setGenLength(Number(e.target.value))} className="gen-slider" />
                 </div>
                 <div className="gen-row">
                   <label className="gen-check-label">
                     <input type="checkbox" checked={genSymbols} onChange={(e) => setGenSymbols(e.target.checked)} />
-                    包含符號 (!@#$%)
+                    {t('password', 'genSymbols')}
                   </label>
                 </div>
                 <button className="btn-primary" style={{ padding: '8px' }} onClick={handleGenerate}>
@@ -153,7 +153,7 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
 
           <div className="field">
             <label className="field-label">{t('password', 'notes')}</label>
-            <textarea className="input" rows={2} placeholder="備註..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <textarea className="input" rows={2} placeholder={t("password", "notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
           <div className="field">

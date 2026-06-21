@@ -28,7 +28,7 @@ export default function RecipesPage() {
     const set = new Set<string>()
     recipes.forEach((r) => (r.tags || []).forEach((t) => set.add(t)))
     return [...set].sort()
-  }, [recipes.map(r => r.tags?.join(',')).join('|')])
+  }, [recipes])
 
   const filtered = useMemo(() => {
     return recipes.filter((r) => {

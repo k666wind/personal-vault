@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, BookOpen, Bookmark, Lock, FileText } from 'lucide-react'
+import { Home, BookOpen, Bookmark, Lock, CalendarDays } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 
 export default function BottomNav() {
@@ -10,7 +10,7 @@ export default function BottomNav() {
     { to: '/recipes', icon: BookOpen, label: t('nav', 'recipes') },
     { to: '/bookmarks', icon: Bookmark, label: t('nav', 'bookmarks') },
     { to: '/passwords', icon: Lock, label: t('nav', 'passwords') },
-    { to: '/notes', icon: FileText, label: t('nav', 'notes') },
+    { to: '/countdown', icon: CalendarDays, label: t('nav', 'countdown') },
   ]
 
   return (

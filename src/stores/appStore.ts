@@ -1,23 +1,20 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Language, User, AppSettings } from '../types'
+import type { Language, Theme, User, AppSettings } from '../types'
 import { translations } from '../i18n/translations'
 
 interface AppStore {
-  // Auth
   user: User | null
   setUser: (user: User | null) => void
 
-  // Settings
   settings: AppSettings
   setLanguage: (lang: Language) => void
+  setTheme: (theme: Theme) => void
   setClaudeApiKey: (key: string) => void
   setLockTimeout: (minutes: number) => void
 
-  // i18n helper
   t: (section: string, key: string) => string
 
-  // Recent items
   recentItems: Array<{ id: string; moduleType: string; title: string; viewedAt: number }>
   addRecentItem: (item: { id: string; moduleType: string; title: string }) => void
 }
@@ -30,12 +27,16 @@ export const useAppStore = create<AppStore>()(
 
       settings: {
         language: 'zh',
+        theme: 'light',
         claudeApiKey: '',
         passwordLockTimeout: 5,
       },
 
       setLanguage: (lang) =>
         set((s) => ({ settings: { ...s.settings, language: lang } })),
+
+      setTheme: (theme) =>
+        set((s) => ({ settings: { ...s.settings, theme } })),
 
       setClaudeApiKey: (key) =>
         set((s) => ({ settings: { ...s.settings, claudeApiKey: key } })),

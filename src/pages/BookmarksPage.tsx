@@ -25,7 +25,7 @@ export default function BookmarksPage() {
     const set = new Set<string>()
     bookmarks.forEach((b) => (b.tags || []).forEach((t) => set.add(t)))
     return [...set].sort()
-  }, [bookmarks.map(b => b.tags?.join(',')).join('|')])
+  }, [bookmarks])
 
   const filtered = useMemo(() => {
     return bookmarks.filter((b) => {
@@ -86,7 +86,7 @@ export default function BookmarksPage() {
       return (
         <div className="empty-page">
           <div className="empty-icon-wrap">🔗</div>
-          <p>{bookmarks.length === 0 ? '未有網址，點右下角新增' : t('common', 'noResults')}</p>
+          <p>{bookmarks.length === 0 ? t('bookmark', 'title') === t('bookmark','title') ? '未有網址，點右下角新增' : 'No bookmarks yet' : t('common', 'noResults')}</p>
         </div>
       )
     }

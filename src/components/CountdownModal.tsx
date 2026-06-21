@@ -1,64 +1,61 @@
 import { useState } from 'react'
 import { X, Loader2, XCircle } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
-import { useNoteStore } from '../stores/noteStore'
+import { useCountdownStore } from '../stores/countdownStore'
 import TagInput from './TagInput'
-import OcrButton from './OcrButton'
-import type { Note } from '../types'
+import type { DateCountdown } from '../types'
 
 interface Props {
-  note?: Note
+  item?: DateCountdown
   onClose: () => void
   allTags: string[]
 }
 
-export default function NoteModal({ note, onClose, allTags }: Props) {
-  const { t, user } = useAppStore()
-  const { add, update } = useNoteStore()
+function toLocalDateStr(ms: number) {
+  const d = new Date(ms)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
 
-  const [title, setTitle] = useState(note?.title || '')
-  const [content, setContent] = useState(note?.content || '')
-  const [tags, setTags] = useState<string[]>(note?.tags || [])
+function localDateToMs(str: string): number {
+  // Parse as local midnight
+  const [y, m, d] = str.split('-').map(Number)
+  return new Date(y, m - 1, d, 0, 0, 0, 0).getTime()
+}
+
+export default function CountdownModal({ item, onClose, allTags }: Props) {
+  const { t, user } = useAppStore()
+  const { add, update } = useCountdownStore()
+
+  const [title, setTitle] = useState(item?.title || '')
+  const [notes, setNotes] = useState(item?.notes || '')
+  const [targetDate, setTargetDate] = useState(item?.targetDate ? toLocalDateStr(item.targetDate) : '')
+  const [tags, setTags] = useState<string[]>(item?.tags || [])
   const [reminderAt, setReminderAt] = useState<string>(
-    note?.reminderAt ? new Date(note.reminderAt).toISOString().slice(0, 16) : ''
+    item?.reminderAt ? new Date(item.reminderAt).toISOString().slice(0, 16) : ''
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [markdownPreview, setMarkdownPreview] = useState(false)
-  const [renderedMd, setRenderedMd] = useState('')
 
-  const isEdit = !!note
-
-  const handleOcr = (text: string) => {
-    setContent((prev) => prev ? `${prev}\n\n${text}` : text)
-  }
-
-  const handlePreviewToggle = async () => {
-    if (!markdownPreview) {
-      // Lazy-load marked
-      try {
-        const { marked } = await import('marked')
-        setRenderedMd(await marked.parse(content))
-      } catch {
-        setRenderedMd(`<pre>${content}</pre>`)
-      }
-    }
-    setMarkdownPreview(!markdownPreview)
-  }
+  const isEdit = !!item
 
   const handleSave = async () => {
-    if (!title.trim()) { setError(t('note', 'titleRequired')); return }
+    if (!title.trim()) { setError(t('countdown', 'titleRequired')); return }
+    if (!targetDate) { setError(t('countdown', 'dateRequired')); return }
     setSaving(true)
     try {
       const data = {
         title: title.trim(),
-        content,
+        notes: notes.trim() || undefined,
+        targetDate: localDateToMs(targetDate),
         tags,
-        isFavourite: note?.isFavourite || false,
+        isFavourite: item?.isFavourite || false,
         reminderAt: reminderAt ? new Date(reminderAt).getTime() : undefined,
       }
       if (isEdit) {
-        await update(note.id, data)
+        await update(item.id, data)
       } else {
         await add(user!.uid, data)
       }
@@ -79,65 +76,54 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-tall">
+      <div className="modal">
         <div className="modal-header">
-          <h2>{isEdit ? t('common', 'edit') : t('note', 'add')}</h2>
+          <h2>{isEdit ? t('common', 'edit') : t('countdown', 'add')}</h2>
           <button className="icon-btn" onClick={onClose}><X size={20} /></button>
         </div>
 
         <div className="modal-body">
-          {/* Title */}
           <div className="field">
             <label className="field-label">{t('common', 'title')}</label>
             <input
               type="text"
               className="input"
-              placeholder={t('note', 'titlePlaceholder')}
+              placeholder={t('countdown', 'titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus={!isEdit}
             />
           </div>
 
-          {/* Content + OCR + Markdown toggle */}
           <div className="field">
-            <div className="field-label-row">
-              <label className="field-label">{t('note', 'content')}</label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  className="btn-add-row"
-                  onClick={handlePreviewToggle}
-                  style={{ fontSize: 11 }}
-                >
-                  {markdownPreview ? '✏️ ' + t('common', 'edit') : '👁 MD'}
-                </button>
-                <OcrButton onExtracted={handleOcr} label={t('note', 'extractFromImage')} />
-              </div>
-            </div>
-            {markdownPreview ? (
-              <div
-                className="markdown-preview input"
-                style={{ minHeight: 180, overflowY: 'auto' }}
-                dangerouslySetInnerHTML={{ __html: renderedMd }}
-              />
-            ) : (
-              <textarea
-                className="input note-textarea"
-                placeholder={t('note', 'contentPlaceholder')}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={8}
-              />
-            )}
+            <label className="field-label">{t('countdown', 'targetDate')}</label>
+            <input
+              type="date"
+              className="input"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+            />
           </div>
 
-          {/* Tags */}
+          <div className="field">
+            <label className="field-label">
+              {t('common', 'notes')}
+              <span className="optional-hint"> {t('common', 'optional')}</span>
+            </label>
+            <textarea
+              className="input"
+              rows={3}
+              placeholder={t('countdown', 'notesPlaceholder')}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
           <div className="field">
             <label className="field-label">{t('common', 'tags')}</label>
             <TagInput tags={tags} onChange={setTags} suggestions={allTags} />
           </div>
 
-          {/* Reminder — OPTIONAL */}
           <div className="field">
             <div className="field-label-row">
               <label className="field-label">

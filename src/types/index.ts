@@ -1,6 +1,7 @@
 export type Language = 'zh' | 'en'
+export type Theme = 'light' | 'dark'
 
-export type ModuleType = 'recipe' | 'bookmark' | 'password' | 'note'
+export type ModuleType = 'recipe' | 'bookmark' | 'password' | 'note' | 'countdown'
 
 export interface User {
   uid: string
@@ -93,6 +94,20 @@ export interface Note {
   updatedAt: number
 }
 
+// ── Date Countdown ───────────────────────────────────────
+export interface DateCountdown {
+  id: string
+  userId: string
+  title: string
+  notes?: string
+  targetDate: number      // epoch ms (date only, midnight local)
+  tags: string[]
+  isFavourite: boolean
+  reminderAt?: number
+  createdAt: number
+  updatedAt: number
+}
+
 // ── Reminder ─────────────────────────────────────────────
 export interface Reminder {
   id: string
@@ -107,6 +122,7 @@ export interface Reminder {
 // ── Settings ─────────────────────────────────────────────
 export interface AppSettings {
   language: Language
+  theme: Theme
   claudeApiKey?: string
   passwordLockTimeout: number
 }

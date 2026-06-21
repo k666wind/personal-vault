@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Eye, EyeOff, Download, Upload, Loader2 } from 'lucide-react'
+import { ChevronLeft, Eye, EyeOff, Download, Upload, Loader2, Sun, Moon } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useAuth } from '../hooks/useAuth'
 import { useBookmarkStore } from '../stores/bookmarkStore'
@@ -14,7 +14,7 @@ import { addRecipe } from '../lib/recipeService'
 import { addPasswordEntry } from '../lib/passwordService'
 
 export default function SettingsPage() {
-  const { t, settings, setLanguage, setClaudeApiKey, setLockTimeout, user } = useAppStore()
+  const { t, settings, setLanguage, setTheme, setClaudeApiKey, setLockTimeout, user } = useAppStore()
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const [showApiKey, setShowApiKey] = useState(false)
@@ -29,16 +29,8 @@ export default function SettingsPage() {
   const { entries: passwords } = usePasswordStore()
 
   const handleExportJson = () => {
-    exportJson({
-      version: 1,
-      exportedAt: Date.now(),
-      recipes,
-      bookmarks,
-      notes,
-      passwords,
-    })
+    exportJson({ version: 1, exportedAt: Date.now(), recipes, bookmarks, notes, passwords })
   }
-
   const handleExportCsv = () => exportCsv(bookmarks, notes)
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +41,6 @@ export default function SettingsPage() {
     try {
       const data: VaultExport = await importJson(file)
       let count = 0
-
       for (const b of (data.bookmarks || [])) {
         await addBookmark(user.uid, { url: b.url, title: b.title, description: b.description, favicon: b.favicon, tags: b.tags, isFavourite: b.isFavourite })
         count++
@@ -66,9 +57,11 @@ export default function SettingsPage() {
         await addPasswordEntry(user.uid, { site: p.site, username: p.username, encryptedPassword: p.encryptedPassword, notes: p.notes, tags: p.tags, isFavourite: p.isFavourite, expiresAt: p.expiresAt })
         count++
       }
-      setImportMsg(`成功匯入 ${count} 筆資料`)
+      setImportMsg(t('settings', 'language') === 'en'
+        ? `Successfully imported ${count} items`
+        : `成功匯入 ${count} 筆資料`)
     } catch (e) {
-      setImportMsg('匯入失敗：' + (e instanceof Error ? e.message : '未知錯誤'))
+      setImportMsg(t('error', 'saveFailed') + (e instanceof Error ? e.message : t('error', 'unknownError')))
     } finally {
       setImporting(false)
       if (importRef.current) importRef.current.value = ''
@@ -93,6 +86,27 @@ export default function SettingsPage() {
           <div className="lang-toggle">
             <button className={settings.language === 'zh' ? 'active' : ''} onClick={() => setLanguage('zh')}>中文</button>
             <button className={settings.language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')}>English</button>
+          </div>
+        </div>
+
+        {/* Theme */}
+        <div className="settings-section">
+          <p className="settings-label">{t('settings', 'theme')}</p>
+          <div className="lang-toggle">
+            <button
+              className={settings.theme === 'light' ? 'active' : ''}
+              onClick={() => setTheme('light')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Sun size={14} /> {t('settings', 'themeLight')}
+            </button>
+            <button
+              className={settings.theme === 'dark' ? 'active' : ''}
+              onClick={() => setTheme('dark')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Moon size={14} /> {t('settings', 'themeDark')}
+            </button>
           </div>
         </div>
 
@@ -128,14 +142,14 @@ export default function SettingsPage() {
         <div className="settings-section">
           <p className="settings-label">{t('settings', 'exportData')}</p>
           <p className="settings-hint">
-            食譜 {recipes.length} · 網址 {bookmarks.length} · 筆記 {notes.length} · 密碼 {passwords.length}
+            {t('recipe', 'title')} {recipes.length} · {t('bookmark', 'title')} {bookmarks.length} · {t('note', 'title')} {notes.length} · {t('password', 'title')} {passwords.length}
           </p>
           <div className="export-btns">
             <button className="btn-export" onClick={handleExportJson}>
-              <Download size={15} /> JSON（完整）
+              <Download size={15} /> {t('settings', 'exportJson')}
             </button>
             <button className="btn-export" onClick={handleExportCsv}>
-              <Download size={15} /> CSV（網址+筆記）
+              <Download size={15} /> {t('settings', 'exportCsv')}
             </button>
           </div>
         </div>
@@ -143,13 +157,14 @@ export default function SettingsPage() {
         {/* Import */}
         <div className="settings-section">
           <p className="settings-label">{t('settings', 'importData')}</p>
-          <p className="settings-hint">只支援 Vault JSON 格式，資料會加到現有記錄</p>
           <button className="btn-export" onClick={() => importRef.current?.click()} disabled={importing}>
-            {importing ? <><Loader2 size={14} className="spin" /> 匯入中...</> : <><Upload size={15} /> 選擇 JSON 檔案</>}
+            {importing
+              ? <><Loader2 size={14} className="spin" /> {t('common', 'loading')}</>
+              : <><Upload size={15} /> {t('settings', 'importData')}</>}
           </button>
           <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
           {importMsg && (
-            <p className={`import-msg ${importMsg.includes('失敗') ? 'error-msg' : 'success-msg'}`}>
+            <p className={`import-msg ${importMsg.includes('失敗') || importMsg.includes('failed') ? 'error-msg' : 'success-msg'}`}>
               {importMsg}
             </p>
           )}

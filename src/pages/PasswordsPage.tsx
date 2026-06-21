@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Search, Star, Tag, X, Lock, RefreshCw } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Search, Star, Tag, X, Lock, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { usePasswordStore } from '../stores/passwordStore'
 import PasswordCard from '../components/PasswordCard'
@@ -11,6 +12,7 @@ import type { PasswordEntry } from '../types'
 export default function PasswordsPage() {
   const { t, user, settings } = useAppStore()
   const { entries, loading, error, isLocked, lock, init, teardown, checkIdleTimeout, recordActivity } = usePasswordStore()
+  const navigate = useNavigate()
 
   const [showModal, setShowModal] = useState(false)
   const [showChangePw, setShowChangePw] = useState(false)
@@ -38,7 +40,7 @@ export default function PasswordsPage() {
     const set = new Set<string>()
     entries.forEach((e) => (e.tags || []).forEach((t) => set.add(t)))
     return [...set].sort()
-  }, [entries.map(e => e.tags?.join(',')).join('|')])
+  }, [entries])
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
@@ -66,15 +68,15 @@ export default function PasswordsPage() {
     if (error === 'index-building') return (
       <div className="empty-page">
         <RefreshCw size={36} className="empty-icon building-icon" />
-        <p className="error-state-title">Firebase Index 建立中</p>
-        <p className="error-state-hint">通常需要 1–3 分鐘</p>
-        <button className="btn-outline-sm" onClick={() => user && init(user.uid)}>重新嘗試</button>
+        <p className="error-state-title">{t('error', 'indexBuilding')}</p>
+        <p className="error-state-hint">{t('error', 'indexHint')}</p>
+        <button className="btn-outline-sm" onClick={() => user && init(user.uid)}>{t('error', 'retryAgain')}</button>
       </div>
     )
     if (filtered.length === 0) return (
       <div className="empty-page">
         <div className="empty-icon-wrap">🔐</div>
-        <p>{entries.length === 0 ? '未有密碼，點右下角新增' : t('common', 'noResults')}</p>
+        <p>{entries.length === 0 ? t('password','title') ? '未有密碼，點右下角新增' : 'No passwords yet' : t('common', 'noResults')}</p>
       </div>
     )
     return (
@@ -90,8 +92,11 @@ export default function PasswordsPage() {
         <h1>{t('password', 'title')}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span className="item-count">{entries.length}</span>
+          <button className="btn-outline-sm" style={{fontSize:11,padding:'4px 8px'}} onClick={() => navigate('/passwords/health')}>
+            <ShieldCheck size={13} style={{display:'inline',marginRight:3}} />{t('password','health')}
+          </button>
           <button className="btn-outline-sm" style={{fontSize:11,padding:'4px 8px'}} onClick={() => setShowChangePw(true)}>
-            更換主密碼
+            {t('password','changeMaster')}
           </button>
           <button className="icon-btn" onClick={lock} title={t('password', 'lock')}>
             <Lock size={18} />
