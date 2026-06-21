@@ -84,15 +84,16 @@ export const usePasswordStore = create<PasswordStore>((set, get) => ({
     const { masterPassword } = get()
     if (!masterPassword) throw new Error('Not unlocked')
     const encryptedPassword = encrypt(plainPassword, masterPassword)
-    await addPasswordEntry(userId, {
+    const payload: Parameters<typeof addPasswordEntry>[1] = {
       site,
       username,
       encryptedPassword,
       notes: extra.notes || '',
       tags: extra.tags || [],
       isFavourite: extra.isFavourite || false,
-      expiresAt: extra.expiresAt,
-    })
+    }
+    if (extra.expiresAt !== undefined) payload.expiresAt = extra.expiresAt
+    await addPasswordEntry(userId, payload)
   },
 
   update: async (id, site, username, plainPassword, extra) => {

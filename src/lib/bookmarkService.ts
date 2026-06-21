@@ -64,10 +64,10 @@ export async function updateBookmark(
   id: string,
   data: Partial<Omit<Bookmark, 'id' | 'userId' | 'createdAt'>>
 ) {
-  await updateDoc(doc(db, COL, id), {
+  await updateDoc(doc(db, COL, id), stripUndefined({ 
     ...data,
     updatedAt: serverTimestamp(),
-  })
+   } as Record<string, unknown>))
 }
 
 export async function deleteBookmark(id: string) {

@@ -50,7 +50,8 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
     if (!password) { setError(t('password', 'passwordRequired')); return }
     setSaving(true)
     try {
-      const extra = { notes, tags, expiresAt: expiresAt ? new Date(expiresAt).getTime() : undefined }
+      const extra: { notes: string; tags: string[]; expiresAt?: number } = { notes, tags }
+      if (expiresAt) extra.expiresAt = new Date(expiresAt).getTime()
       if (isEdit) {
         await update(entry.id, site.trim(), username.trim(), password, extra)
       } else {

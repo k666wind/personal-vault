@@ -5,6 +5,14 @@ import {
 import { db } from './firebase'
 import type { Recipe } from '../types'
 
+
+// Strip undefined values — Firestore rejects them
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
 const COL = 'recipes'
 
 function toRecipe(id: string, data: Record<string, unknown>): Recipe {
@@ -52,7 +60,7 @@ export async function addRecipe(
 }
 
 export async function updateRecipe(id: string, data: Partial<Omit<Recipe, 'id' | 'userId' | 'createdAt'>>) {
-  await updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+  await updateDoc(doc(db, COL, id), stripUndefined({  ...data, updatedAt: serverTimestamp()  } as Record<string, unknown>))
 }
 
 export async function deleteRecipe(id: string) {

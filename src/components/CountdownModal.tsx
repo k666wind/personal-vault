@@ -48,11 +48,11 @@ export default function CountdownModal({ item, onClose, allTags }: Props) {
     try {
       const data = {
         title: title.trim(),
-        notes: notes.trim() || undefined,
+        ...(notes.trim() ? { notes: notes.trim() } : {}),
         targetDate: localDateToMs(targetDate),
         tags,
         isFavourite: item?.isFavourite || false,
-        reminderAt: reminderAt ? new Date(reminderAt).getTime() : undefined,
+        ...(reminderAt ? { reminderAt: new Date(reminderAt).getTime() } : {}),
       }
       if (isEdit) {
         await update(item.id, data)

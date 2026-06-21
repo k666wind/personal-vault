@@ -63,7 +63,7 @@ export async function updateNote(
   id: string,
   data: Partial<Omit<Note, 'id' | 'userId' | 'createdAt'>>
 ) {
-  await updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+  await updateDoc(doc(db, COL, id), stripUndefined({  ...data, updatedAt: serverTimestamp()  } as Record<string, unknown>))
 }
 
 export async function deleteNote(id: string) {

@@ -5,6 +5,14 @@ import {
 import { db } from './firebase'
 import type { PasswordEntry } from '../types'
 
+
+// Strip undefined values — Firestore rejects them
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
 const COL = 'passwords'
 
 function toEntry(id: string, data: Record<string, unknown>): PasswordEntry {
@@ -48,7 +56,7 @@ export async function addPasswordEntry(
 }
 
 export async function updatePasswordEntry(id: string, data: Partial<Omit<PasswordEntry, 'id' | 'userId' | 'createdAt'>>) {
-  await updateDoc(doc(db, COL, id), { ...data, updatedAt: serverTimestamp() })
+  await updateDoc(doc(db, COL, id), stripUndefined({  ...data, updatedAt: serverTimestamp()  } as Record<string, unknown>))
 }
 
 export async function deletePasswordEntry(id: string) {
