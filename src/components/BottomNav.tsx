@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, BookOpen, Bookmark, Lock, CalendarDays } from 'lucide-react'
+import { Home, BookOpen, Bookmark, Lock, CalendarDays, FileText } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 
 export default function BottomNav() {
@@ -7,8 +7,9 @@ export default function BottomNav() {
 
   const tabs = [
     { to: '/', icon: Home, label: t('nav', 'home'), end: true },
-    { to: '/recipes', icon: BookOpen, label: t('nav', 'recipes') },
+    { to: '/notes', icon: FileText, label: t('nav', 'notes') },
     { to: '/bookmarks', icon: Bookmark, label: t('nav', 'bookmarks') },
+    { to: '/recipes', icon: BookOpen, label: t('nav', 'recipes') },
     { to: '/passwords', icon: Lock, label: t('nav', 'passwords') },
     { to: '/countdown', icon: CalendarDays, label: t('nav', 'countdown') },
   ]
@@ -22,7 +23,7 @@ export default function BottomNav() {
           end={end}
           className={({ isActive }) => `nav-tab ${isActive ? 'active' : ''}`}
         >
-          <Icon size={22} />
+          <Icon size={20} />
           <span>{label}</span>
         </NavLink>
       ))}

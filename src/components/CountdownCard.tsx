@@ -79,7 +79,7 @@ export default function CountdownCard({ item, onEdit }: Props) {
               <Bell size={11} />
               {new Date(item.reminderAt).toLocaleString(
                 t('nav', 'home') === 'Home' ? 'en-GB' : 'zh-HK',
-                { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+                { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
               )}
             </div>
           )}
