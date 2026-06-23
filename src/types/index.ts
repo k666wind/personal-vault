@@ -48,6 +48,7 @@ export interface Recipe {
   nutrition?: Nutrition
   tags: string[]
   isFavourite: boolean
+  isPublic?: boolean
   createdAt: number
   updatedAt: number
 }

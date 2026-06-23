@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Clock, Users, ChefHat, Star, Edit2, ShoppingCart, Check } from 'lucide-react'
+import { X, Clock, Users, ChefHat, Star, Edit2, ShoppingCart, Check, Share2 } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import type { Recipe } from '../types'
@@ -7,10 +7,11 @@ import type { Recipe } from '../types'
 interface Props {
   recipe: Recipe
   onEdit: () => void
+  onShare?: () => void
   onClose: () => void
 }
 
-export default function RecipeDetailModal({ recipe, onEdit, onClose }: Props) {
+export default function RecipeDetailModal({ recipe, onEdit, onShare, onClose }: Props) {
   const { t } = useAppStore()
   const { update, toggleFavourite } = useRecipeStore()
   const [servingMult, setServingMult] = useState(1)
@@ -68,6 +69,11 @@ export default function RecipeDetailModal({ recipe, onEdit, onClose }: Props) {
             >
               <Star size={18} fill={recipe.isFavourite ? 'currentColor' : 'none'} />
             </button>
+            {onShare && (
+              <button className="icon-btn" onClick={onShare} title="分享">
+                <Share2 size={18} style={{ color: recipe.isPublic ? "var(--color-success)" : undefined }} />
+              </button>
+            )}
             <button className="icon-btn" onClick={onEdit}><Edit2 size={18} /></button>
             <button className="icon-btn" onClick={onClose}><X size={20} /></button>
           </div>

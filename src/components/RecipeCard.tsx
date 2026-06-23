@@ -1,4 +1,4 @@
-import { Star, Clock, Users, Trash2 } from 'lucide-react'
+import { Star, Clock, Users, Trash2, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import { useRecipeStore } from '../stores/recipeStore'
 import { useAppStore } from '../stores/appStore'
@@ -8,6 +8,7 @@ interface Props {
   recipe: Recipe
   onClick: () => void
   onEdit: () => void
+  onShare?: () => void
 }
 
 const difficultyColor: Record<string, string> = {
@@ -16,11 +17,10 @@ const difficultyColor: Record<string, string> = {
   hard: 'var(--color-danger)',
 }
 
-export default function RecipeCard({ recipe, onClick, onEdit }: Props) {
+export default function RecipeCard({ recipe, onClick, onEdit, onShare }: Props) {
   const { toggleFavourite, remove } = useRecipeStore()
   const { t } = useAppStore()
   const [confirmDelete, setConfirmDelete] = useState(false)
-  void onEdit
 
   return (
     <div className="card recipe-card" onClick={onClick}>
@@ -32,6 +32,14 @@ export default function RecipeCard({ recipe, onClick, onEdit }: Props) {
             onClick={() => toggleFavourite(recipe.id, recipe.isFavourite)}
           >
             <Star size={17} fill={recipe.isFavourite ? 'currentColor' : 'none'} />
+          </button>
+          {onShare && (
+            <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onShare() }}>
+              <Share2 size={15} style={{ color: recipe.isPublic ? 'var(--color-success)' : undefined }} />
+            </button>
+          )}
+          <button className="icon-btn" onClick={onEdit}>
+            ✏️
           </button>
           <button
             className={`icon-btn ${confirmDelete ? 'danger-btn' : ''}`}

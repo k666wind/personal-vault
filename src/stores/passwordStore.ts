@@ -29,6 +29,7 @@ interface PasswordStore {
 
   add: (userId: string, site: string, username: string, plainPassword: string, extra: Partial<PasswordEntry>) => Promise<void>
   update: (id: string, site: string, username: string, plainPassword: string, extra: Partial<PasswordEntry>) => Promise<void>
+  updateFields: (id: string, fields: Partial<Omit<PasswordEntry, 'id' | 'userId' | 'createdAt'>>) => Promise<void>
   remove: (id: string) => Promise<void>
   toggleFavourite: (id: string, current: boolean) => Promise<void>
   decryptPassword: (encryptedPassword: string) => string | null
@@ -104,6 +105,10 @@ export const usePasswordStore = create<PasswordStore>((set, get) => ({
   },
 
   remove: async (id) => { await deletePasswordEntry(id) },
+
+  updateFields: async (id, fields) => {
+    await updatePasswordEntry(id, fields)
+  },
 
   toggleFavourite: async (id, current) => { await updatePasswordEntry(id, { isFavourite: !current }) },
 

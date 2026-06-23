@@ -11,6 +11,9 @@ import NotesPage from './pages/NotesPage'
 import SettingsPage from './pages/SettingsPage'
 import CountdownPage from './pages/CountdownPage'
 import PasswordHealthPage from './pages/PasswordHealthPage'
+import ShoppingListPage from './pages/ShoppingListPage'
+import TagManagerPage from './pages/TagManagerPage'
+import SharedRecipePage from './pages/SharedRecipePage'
 import BottomNav from './components/BottomNav'
 
 function AuthenticatedApp() {
@@ -23,6 +26,8 @@ function AuthenticatedApp() {
           <Route path="/bookmarks" element={<BookmarksPage />} />
           <Route path="/passwords" element={<PasswordsPage />} />
           <Route path="/passwords/health" element={<PasswordHealthPage />} />
+          <Route path="/shopping" element={<ShoppingListPage />} />
+          <Route path="/tags" element={<TagManagerPage />} />
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/countdown" element={<CountdownPage />} />
           <Route path="/settings" element={<SettingsPage />} />
@@ -47,7 +52,17 @@ function AppRouter() {
     return <div className="loading-screen"><p>Loading...</p></div>
   }
 
-  return user ? <AuthenticatedApp /> : <LoginPage />
+  if (user) return <AuthenticatedApp />
+  // Public shared recipe page — accessible without login
+  if (window.location.pathname.includes('/shared/recipe/')) {
+    return (
+      <Routes>
+        <Route path="/shared/recipe/:id" element={<SharedRecipePage />} />
+        <Route path="*" element={<LoginPage />} />
+      </Routes>
+    )
+  }
+  return <LoginPage />
 }
 
 export default function App() {
