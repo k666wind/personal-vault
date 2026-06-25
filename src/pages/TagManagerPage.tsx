@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Pencil, Trash2, Merge, Check, X } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
@@ -15,19 +15,38 @@ interface TagInfo {
 }
 
 export default function TagManagerPage() {
-  const { t } = useAppStore()
+  const { t, user } = useAppStore()
   const navigate = useNavigate()
-  const { bookmarks, update: updateBm } = useBookmarkStore()
-  const { notes, update: updateNt } = useNoteStore()
-  const { recipes, update: updateRc } = useRecipeStore()
-  const { entries: passwords, updateFields: updatePw } = usePasswordStore()
-  const { items: countdowns, update: updateCd } = useCountdownStore()
+  const { bookmarks, update: updateBm, init: initBm, teardown: tearBm } = useBookmarkStore()
+  const { notes, update: updateNt, init: initNt, teardown: tearNt } = useNoteStore()
+  const { recipes, update: updateRc, init: initRc, teardown: tearRc } = useRecipeStore()
+  const { entries: passwords, updateFields: updatePw, init: initPw, teardown: tearPw } = usePasswordStore()
+  const { items: countdowns, update: updateCd, subscribe: subCd, cleanup: cleanCd } = useCountdownStore()
 
   const [editingTag, setEditingTag] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [mergingTag, setMergingTag] = useState<string | null>(null)
   const [mergeTarget, setMergeTarget] = useState('')
   const [busy, setBusy] = useState(false)
+
+  // BUG-06 FIX: initialise all stores so tags are available when navigating
+  // directly to /tags (e.g. from BottomNav or browser history) without having
+  // visited any module page first.
+  useEffect(() => {
+    if (!user) return
+    initBm(user.uid)
+    initNt(user.uid)
+    initRc(user.uid)
+    initPw(user.uid)
+    subCd(user.uid)
+    return () => {
+      tearBm()
+      tearNt()
+      tearRc()
+      tearPw()
+      cleanCd()
+    }
+  }, [user?.uid])
 
   // Collect all tags with counts across all modules
   const tagInfos = useMemo<TagInfo[]>(() => {

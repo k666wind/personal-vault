@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Check, Trash2, ShoppingCart } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
@@ -12,9 +12,17 @@ interface ShoppingItem extends Ingredient {
 }
 
 export default function ShoppingListPage() {
-  const { t } = useAppStore()
-  const { recipes, update } = useRecipeStore()
+  const { t, user } = useAppStore()
+  // BUG-05 FIX: initialise the recipe store if it hasn't been loaded yet.
+  // Without this, navigating directly to /shopping (e.g. via PWA shortcut)
+  // shows an empty list because recipes haven't been fetched from Firestore.
+  const { recipes, update, init, teardown } = useRecipeStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user) init(user.uid)
+    return () => teardown()
+  }, [user?.uid])
 
   // Collect all ingredients marked inShoppingList from all recipes
   const allItems = useMemo<ShoppingItem[]>(() => {

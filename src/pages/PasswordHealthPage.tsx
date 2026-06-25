@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ShieldCheck, ShieldAlert, Copy } from 'lucide-react'
+import { ChevronLeft, ShieldCheck, ShieldAlert, Copy, Lock } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { usePasswordStore } from '../stores/passwordStore'
 import { scorePassword } from '../lib/crypto'
@@ -8,9 +8,14 @@ import { scorePassword } from '../lib/crypto'
 export default function PasswordHealthPage() {
   const { t } = useAppStore()
   const navigate = useNavigate()
-  const { entries, decryptPassword } = usePasswordStore()
+  // BUG-02 FIX: guard against locked state
+  const { entries, decryptPassword, isLocked } = usePasswordStore()
 
   const analysis = useMemo(() => {
+    // BUG-02 FIX: if vault is locked, return empty analysis instead of
+    // decrypting with null key (which scores every password as 0 = "weak")
+    if (isLocked) return { score: 0, duplicates: [], weak: [], expiring: [], decrypted: [] }
+
     const decrypted: Array<{ id: string; site: string; username: string; plain: string; strength: number; expiresAt?: number }> = []
 
     for (const e of entries) {
@@ -52,7 +57,10 @@ export default function PasswordHealthPage() {
     const score = Math.max(0, Math.round(100 - penalty))
 
     return { score, duplicates, weak, expiring, decrypted }
-  }, [entries])
+  // BUG-22 FIX: only re-run expensive decryption when encrypted values actually
+  // change, not on every Firestore update (e.g. tag edits trigger listener but
+  // don't change encryptedPassword). Stable key = sorted id:hash pairs.
+  }, [entries.map((e) => e.id + ':' + e.encryptedPassword).sort().join('|'), isLocked])
 
   const scoreColor =
     analysis.score >= 80 ? 'var(--color-success)' :
@@ -61,6 +69,28 @@ export default function PasswordHealthPage() {
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {})
+  }
+
+  // BUG-02 FIX: show lock screen if vault is locked
+  if (isLocked) {
+    return (
+      <div className="page">
+        <header className="page-header">
+          <button className="icon-btn" onClick={() => navigate('/passwords')}>
+            <ChevronLeft size={22} />
+          </button>
+          <h1>{t('password', 'health')}</h1>
+          <div style={{ width: 36 }} />
+        </header>
+        <div className="empty-page">
+          <Lock size={48} style={{ color: 'var(--color-text-3)', marginBottom: 12 }} />
+          <p style={{ color: 'var(--color-text-2)' }}>請先解鎖密碼庫</p>
+          <button className="btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/passwords')}>
+            前往解鎖
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

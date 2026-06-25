@@ -9,40 +9,56 @@ interface Props {
 }
 
 export default function ResetMasterPasswordModal({ onClose }: Props) {
-  const { t } = useAppStore()
+  // BUG-14 FIX: use settings.language directly instead of t('password','language')==='en'
+  const { t, settings } = useAppStore()
   const { entries, remove } = usePasswordStore()
   const [step, setStep] = useState<'warn' | 'confirm' | 'deleting' | 'done'>('warn')
   const [confirmText, setConfirmText] = useState('')
   const [deleteAll, setDeleteAll] = useState(true)
+  const [deleteError, setDeleteError] = useState('')
 
+  const isEn = settings.language === 'en'
   const CONFIRM_WORD = 'RESET'
 
   const handleReset = async () => {
     setStep('deleting')
+    setDeleteError('')
+    // BUG-09 FIX: track how many entries were deleted so we can report
+    // partial failure honestly instead of silently reverting to confirm step
+    // with corrupted state. clearMasterVerifier only runs after ALL deletions
+    // succeed (when deleteAll=true), so the verifier stays valid if we fail
+    // partway through and the user can retry.
+    const deletedIds: string[] = []
     try {
       if (deleteAll) {
-        // Delete all password entries from Firestore
         for (const entry of entries) {
           await remove(entry.id)
+          deletedIds.push(entry.id)
         }
       }
-      // Clear the master password verifier from localStorage
+      // All deletions succeeded (or we're keeping entries) — now clear verifier
       clearMasterVerifier()
       setStep('done')
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '未知錯誤'
+      // Report partial deletion honestly
+      const remaining = entries.length - deletedIds.length
+      setDeleteError(
+        `刪除時出錯（${msg}）。已刪除 ${deletedIds.length} 個，剩餘 ${remaining} 個。主密碼驗證器未重設，舊主密碼仍然有效。請重試。`
+      )
       setStep('confirm')
     }
   }
 
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && step !== 'deleting' && onClose()}>
       <div className="modal">
         <div className="modal-header">
           <h2 style={{ color: 'var(--color-error)' }}>
             <ShieldOff size={18} style={{ display: 'inline', marginRight: 6 }} />
-            {t('password', 'language') === 'en' ? 'Reset Master Password' : '重設主密碼'}
+            {isEn ? 'Reset Master Password' : '重設主密碼'}
           </h2>
-          <button className="icon-btn" onClick={onClose}><X size={20} /></button>
+          <button className="icon-btn" onClick={onClose} disabled={step === 'deleting'}><X size={20} /></button>
         </div>
 
         <div className="modal-body">
@@ -112,6 +128,10 @@ export default function ResetMasterPasswordModal({ onClose }: Props) {
                 onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
                 autoFocus
               />
+              {/* BUG-09 FIX: show partial deletion error if previous attempt failed */}
+              {deleteError && (
+                <p className="error-msg" style={{ marginTop: 8 }}>{deleteError}</p>
+              )}
               <div className="modal-footer" style={{ padding: 0, border: 'none' }}>
                 <button className="btn-ghost" onClick={() => setStep('warn')}>{t('common', 'cancel')}</button>
                 <button

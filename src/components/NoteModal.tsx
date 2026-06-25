@@ -12,6 +12,38 @@ interface Props {
   allTags: string[]
 }
 
+// BUG-24 FIX: Sanitise marked output before injecting into DOM.
+// marked v5+ removed the built-in `sanitize` option. We implement a lightweight
+// allow-list sanitiser using the browser's own DOMParser, which is safe and
+// requires no extra dependency.
+function sanitizeHtml(html: string): string {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+
+  // Remove all script elements and event-handler attributes
+  const dangerous = doc.querySelectorAll('script, style, iframe, object, embed, form')
+  dangerous.forEach((el) => el.remove())
+
+  // Strip on* event attributes and javascript: hrefs from every element
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT)
+  let node: Node | null = walker.currentNode
+  while (node) {
+    const el = node as Element
+    for (const attr of Array.from(el.attributes)) {
+      if (
+        attr.name.startsWith('on') ||
+        (attr.name === 'href' && attr.value.trim().toLowerCase().startsWith('javascript:')) ||
+        (attr.name === 'src' && attr.value.trim().toLowerCase().startsWith('javascript:'))
+      ) {
+        el.removeAttribute(attr.name)
+      }
+    }
+    node = walker.nextNode()
+  }
+
+  return doc.body.innerHTML
+}
+
 export default function NoteModal({ note, onClose, allTags }: Props) {
   const { t, user } = useAppStore()
   const { add, update } = useNoteStore()
@@ -19,6 +51,8 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
   const [title, setTitle] = useState(note?.title || '')
   const [content, setContent] = useState(note?.content || '')
   const [tags, setTags] = useState<string[]>(note?.tags || [])
+  // BUG-25 FIX: Use null sentinel to distinguish "no reminder" vs "unchanged".
+  // Empty string means user cleared the field; we must send null to Firestore.
   const [reminderAt, setReminderAt] = useState<string>(
     note?.reminderAt ? new Date(note.reminderAt).toISOString().slice(0, 16) : ''
   )
@@ -35,12 +69,13 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
 
   const handlePreviewToggle = async () => {
     if (!markdownPreview) {
-      // Lazy-load marked
       try {
         const { marked } = await import('marked')
-        setRenderedMd(await marked.parse(content))
+        // BUG-24 FIX: sanitise the HTML output before rendering
+        const raw = await marked.parse(content)
+        setRenderedMd(sanitizeHtml(raw))
       } catch {
-        setRenderedMd(`<pre>${content}</pre>`)
+        setRenderedMd(`<pre>${content.replace(/</g, '&lt;')}</pre>`)
       }
     }
     setMarkdownPreview(!markdownPreview)
@@ -50,12 +85,16 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
     if (!title.trim()) { setError(t('note', 'titleRequired')); return }
     setSaving(true)
     try {
+      // BUG-25 FIX: always include reminderAt in the update payload.
+      // When the user clears the field (reminderAt === ''), we must explicitly
+      // send null so Firestore's updateDoc removes the old value. Previously,
+      // omitting the key meant the old reminderAt persisted forever.
       const data = {
         title: title.trim(),
         content,
         tags,
         isFavourite: note?.isFavourite || false,
-        ...(reminderAt ? { reminderAt: new Date(reminderAt).getTime() } : {}),
+        reminderAt: reminderAt ? new Date(reminderAt).getTime() : null,
       }
       if (isEdit) {
         await update(note.id, data)
@@ -157,6 +196,11 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
               onChange={(e) => setReminderAt(e.target.value)}
             />
           </div>
+
+          {/* BUG-30 FIX: clarify that reminders are display-only (no push notification) */}
+          <p style={{ fontSize: 11, color: 'var(--color-text-3)', marginTop: -8 }}>
+            ⚠️ 提醒只會在 App 開啟時顯示，不會發送系統通知
+          </p>
 
           {error && <p className="error-msg">{error}</p>}
         </div>

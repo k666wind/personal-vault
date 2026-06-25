@@ -17,12 +17,18 @@ function getDayDiff(targetMs: number): number {
 }
 
 export default function CountdownCard({ item, onEdit }: Props) {
-  const { t } = useAppStore()
+  // BUG-31 FIX: read settings.language directly instead of using the fragile
+  // t('nav','home')==='Home' hack to infer the locale. The hack breaks whenever
+  // a translation key is renamed or a new language is added.
+  const { t, settings } = useAppStore()
   const { update, remove } = useCountdownStore()
   const diff = getDayDiff(item.targetDate)
 
   const isPast = diff < 0
   const isToday = diff === 0
+
+  // BUG-31 FIX: derive locale from settings.language, consistent with other components
+  const locale = settings.language === 'en' ? 'en-GB' : 'zh-HK'
 
   const accentColor = isPast
     ? 'var(--color-error)'
@@ -61,10 +67,9 @@ export default function CountdownCard({ item, onEdit }: Props) {
         <div className="countdown-body">
           <p className="card-title">{item.title}</p>
           <p className="countdown-date">
-            {new Date(item.targetDate).toLocaleDateString(
-              t('nav', 'home') === 'Home' ? 'en-GB' : 'zh-HK',
-              { year: 'numeric', month: 'long', day: 'numeric' }
-            )}
+            {new Date(item.targetDate).toLocaleDateString(locale, {
+              year: 'numeric', month: 'long', day: 'numeric',
+            })}
           </p>
           {item.notes && <p className="card-desc">{item.notes}</p>}
           {item.tags.length > 0 && (
@@ -77,10 +82,10 @@ export default function CountdownCard({ item, onEdit }: Props) {
           {item.reminderAt && (
             <div className="card-meta">
               <Bell size={11} />
-              {new Date(item.reminderAt).toLocaleString(
-                t('nav', 'home') === 'Home' ? 'en-GB' : 'zh-HK',
-                { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-              )}
+              {new Date(item.reminderAt).toLocaleString(locale, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })}
             </div>
           )}
         </div>
@@ -88,7 +93,8 @@ export default function CountdownCard({ item, onEdit }: Props) {
 
       <div className="card-actions">
         <button className="icon-btn" onClick={handleFav}>
-          <Star size={16} fill={item.isFavourite ? 'currentColor' : 'none'} style={{ color: item.isFavourite ? '#f59e0b' : undefined }} />
+          <Star size={16} fill={item.isFavourite ? 'currentColor' : 'none'}
+            style={{ color: item.isFavourite ? '#f59e0b' : undefined }} />
         </button>
         <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onEdit(item) }}>
           <Pencil size={15} />

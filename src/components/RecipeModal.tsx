@@ -12,7 +12,13 @@ interface Props {
   allTags: string[]
 }
 
-const uid = () => Math.random().toString(36).slice(2, 8)
+// BUG-34 FIX: use crypto.randomUUID() (available in all modern browsers + HTTPS)
+// which provides 122 bits of randomness, eliminating collision risk entirely.
+// Falls back to the old random string only in test/non-secure contexts.
+const uid = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 14) + Math.random().toString(36).slice(2, 14)
 
 const EMPTY_INGREDIENT = (): Ingredient => ({ id: uid(), name: '', amount: '', unit: '' })
 const EMPTY_STEP = (): RecipeStep => ({ id: uid(), order: 0, description: '', duration: undefined })
@@ -103,6 +109,9 @@ export default function RecipeModal({ recipe, onClose, allTags }: Props) {
         nutrition,
         tags,
         isFavourite: recipe?.isFavourite || false,
+        // BUG-27 FIX: explicitly preserve isPublic on edit so it is never
+        // accidentally cleared if updateRecipe is changed to setDoc in future.
+        isPublic: recipe?.isPublic || false,
       }
       if (isEdit) await update(recipe.id, data)
       else await add(user!.uid, data)

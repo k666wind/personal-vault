@@ -115,7 +115,7 @@ export default function BookmarkModal({ bookmark, onClose, allTags }: Props) {
 
           {/* Title */}
           <div className="field">
-            <label className="field-label">{t('common', 'edit')} — 標題</label>
+            <label className="field-label">{t('common', 'title')}</label>
             <input
               type="text"
               className="input"

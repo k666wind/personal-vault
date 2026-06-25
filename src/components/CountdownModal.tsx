@@ -30,6 +30,7 @@ export default function CountdownModal({ item, onClose, allTags }: Props) {
   const { add, update } = useCountdownStore()
 
   const [title, setTitle] = useState(item?.title || '')
+  // BUG-25 FIX: notes uses empty string = "cleared", handled explicitly on save
   const [notes, setNotes] = useState(item?.notes || '')
   const [targetDate, setTargetDate] = useState(item?.targetDate ? toLocalDateStr(item.targetDate) : '')
   const [tags, setTags] = useState<string[]>(item?.tags || [])
@@ -48,11 +49,14 @@ export default function CountdownModal({ item, onClose, allTags }: Props) {
     try {
       const data = {
         title: title.trim(),
-        ...(notes.trim() ? { notes: notes.trim() } : {}),
+        // BUG-25 FIX: always include notes and reminderAt (even as null/empty)
+        // so that clearing them in edit mode actually removes the old values
+        // from Firestore. Previously omitting the keys left old values in place.
+        notes: notes.trim() || null,
         targetDate: localDateToMs(targetDate),
         tags,
         isFavourite: item?.isFavourite || false,
-        ...(reminderAt ? { reminderAt: new Date(reminderAt).getTime() } : {}),
+        reminderAt: reminderAt ? new Date(reminderAt).getTime() : null,
       }
       if (isEdit) {
         await update(item.id, data)

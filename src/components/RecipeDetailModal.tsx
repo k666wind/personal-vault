@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Clock, Users, ChefHat, Star, Edit2, ShoppingCart, Check, Share2 } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useRecipeStore } from '../stores/recipeStore'
@@ -18,6 +18,14 @@ export default function RecipeDetailModal({ recipe, onEdit, onShare, onClose }: 
   const [shoppingList, setShoppingList] = useState<Set<string>>(
     new Set(recipe.ingredients.filter((i) => i.inShoppingList).map((i) => i.id))
   )
+
+  // BUG-26 FIX: re-sync local shoppingList state when the recipe prop is
+  // updated by Firestore (e.g. another tab added/removed ingredients).
+  // Without this, saving the shopping list would overwrite remote changes
+  // with a stale local set of ingredient IDs.
+  useEffect(() => {
+    setShoppingList(new Set(recipe.ingredients.filter((i) => i.inShoppingList).map((i) => i.id)))
+  }, [recipe.id, recipe.ingredients.map((i) => i.id + String(i.inShoppingList)).join(',')])
 
   const baseServings = recipe.servings || 1
   const multiplier = servingMult

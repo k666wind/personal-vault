@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useAppStore } from './stores/appStore'
@@ -39,8 +39,12 @@ function AuthenticatedApp() {
   )
 }
 
+// BUG-04 FIX: Use useLocation() inside the Router context instead of
+// window.location.pathname. This correctly respects the basename and avoids
+// brittle string matching against the raw window pathname.
 function AppRouter() {
   const { user, settings } = useAppStore()
+  const location = useLocation()
   useAuth()
 
   // Apply theme to document root
@@ -48,13 +52,14 @@ function AppRouter() {
     document.documentElement.setAttribute('data-theme', settings.theme)
   }, [settings.theme])
 
+  // BUG-01 FIX: user===undefined means Firebase Auth hasn't resolved yet
   if (user === undefined) {
     return <div className="loading-screen"><p>Loading...</p></div>
   }
 
-  if (user) return <AuthenticatedApp />
   // Public shared recipe page — accessible without login
-  if (window.location.pathname.includes('/shared/recipe/')) {
+  // Check the router-aware pathname (strips basename automatically)
+  if (!user && location.pathname.startsWith('/shared/recipe/')) {
     return (
       <Routes>
         <Route path="/shared/recipe/:id" element={<SharedRecipePage />} />
@@ -62,6 +67,8 @@ function AppRouter() {
       </Routes>
     )
   }
+
+  if (user) return <AuthenticatedApp />
   return <LoginPage />
 }
 

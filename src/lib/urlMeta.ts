@@ -4,12 +4,35 @@ export interface UrlMeta {
   favicon: string
 }
 
+// BUG-32 FIX: Normalise any favicon href to an absolute URL.
+// Previous implementation failed for:
+//   • protocol-relative URLs: //cdn.example.com/icon.png → wrongly prepended origin
+//   • relative paths: ../images/icon.png → produced invalid URL
+//   • data URIs: correctly handled now (returned as-is)
+function resolveIconUrl(href: string, origin: string, pageUrl: string): string {
+  // data URIs — return as-is
+  if (href.startsWith('data:')) return href
+
+  try {
+    // Use the URL constructor: it resolves relative, absolute, and protocol-relative URLs
+    // Protocol-relative "//cdn.example.com/icon.png" → URL("//cdn.example.com/icon.png", "https://example.com") → "https://cdn.example.com/icon.png"
+    // Relative "../img/icon.png" → resolved against pageUrl base
+    return new URL(href, pageUrl).href
+  } catch {
+    // Fallback: treat as root-relative
+    return `${origin}${href.startsWith('/') ? '' : '/'}${href}`
+  }
+}
+
 // Uses allorigins.win as a free CORS proxy to fetch page metadata
+// BUG-19 awareness: no SLA on allorigins.win; timeout guard added (8s)
 export async function fetchUrlMeta(url: string): Promise<UrlMeta> {
   const defaultMeta: UrlMeta = { title: '', description: '', favicon: '' }
 
   try {
-    const origin = new URL(url).origin
+    const parsedUrl = new URL(url)
+    const origin = parsedUrl.origin
+    // Default favicon: try /favicon.ico
     defaultMeta.favicon = `${origin}/favicon.ico`
 
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
@@ -31,15 +54,16 @@ export async function fetchUrlMeta(url: string): Promise<UrlMeta> {
     const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content')
     const description = ogDesc || metaDesc || ''
 
-    // Favicon
-    const iconLink =
+    // Favicon — try multiple selectors in priority order
+    const iconHref =
+      doc.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href') ||
       doc.querySelector('link[rel="icon"]')?.getAttribute('href') ||
       doc.querySelector('link[rel="shortcut icon"]')?.getAttribute('href') ||
       '/favicon.ico'
 
-    const favicon = iconLink.startsWith('http')
-      ? iconLink
-      : `${origin}${iconLink.startsWith('/') ? '' : '/'}${iconLink}`
+    // BUG-32 FIX: resolve against the actual page URL so relative and
+    // protocol-relative hrefs are handled correctly
+    const favicon = resolveIconUrl(iconHref, origin, url)
 
     return {
       title: title.trim(),
@@ -69,8 +93,9 @@ export function isValidUrl(url: string): boolean {
 }
 
 export function normaliseUrl(url: string): string {
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    return `https://${url}`
+  const trimmed = url.trim()
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return `https://${trimmed}`
   }
-  return url
+  return trimmed
 }

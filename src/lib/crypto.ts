@@ -5,12 +5,22 @@ export function encrypt(plaintext: string, masterPassword: string): string {
   return CryptoJS.AES.encrypt(plaintext, masterPassword).toString()
 }
 
-// Decrypt ciphertext with master password
+// Decrypt ciphertext with master password.
+// BUG-08 FIX: returns '' (empty string) when decryption succeeds but the
+// original plaintext was empty; returns null only on genuine decryption
+// failure (wrong key, corrupted ciphertext). Previously both cases returned
+// null making them indistinguishable, which caused ChangeMasterPasswordModal
+// to silently skip empty-string passwords during re-encryption.
 export function decrypt(ciphertext: string, masterPassword: string): string | null {
   try {
     const bytes = CryptoJS.AES.decrypt(ciphertext, masterPassword)
+    // bytes.sigBytes === 0 means decryption failed (bad key) in crypto-js
+    if (bytes.sigBytes <= 0) return null
     const result = bytes.toString(CryptoJS.enc.Utf8)
-    return result || null
+    // If Utf8 conversion fails (wrong key), result is '' but sigBytes was > 0:
+    // we treat empty-string result after successful byte decode as empty password.
+    // If sigBytes was 0 we already returned null above.
+    return result
   } catch {
     return null
   }

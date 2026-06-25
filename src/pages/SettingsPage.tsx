@@ -7,6 +7,8 @@ import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useNoteStore } from '../stores/noteStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import { usePasswordStore } from '../stores/passwordStore'
+import { useCountdownStore } from '../stores/countdownStore'
+import { addCountdown } from '../lib/countdownService'
 import { exportJson, exportCsv, importJson, type VaultExport } from '../lib/exportImport'
 import { addBookmark } from '../lib/bookmarkService'
 import { addNote } from '../lib/noteService'
@@ -27,9 +29,10 @@ export default function SettingsPage() {
   const { notes } = useNoteStore()
   const { recipes } = useRecipeStore()
   const { entries: passwords } = usePasswordStore()
+  const { items: countdowns } = useCountdownStore()
 
   const handleExportJson = () => {
-    exportJson({ version: 1, exportedAt: Date.now(), recipes, bookmarks, notes, passwords })
+    exportJson({ version: 2, exportedAt: Date.now(), recipes, bookmarks, notes, passwords, countdowns })
   }
   const handleExportCsv = () => exportCsv(bookmarks, notes)
 
@@ -57,7 +60,12 @@ export default function SettingsPage() {
         await addPasswordEntry(user.uid, { site: p.site, username: p.username, encryptedPassword: p.encryptedPassword, notes: p.notes, tags: p.tags, isFavourite: p.isFavourite, expiresAt: p.expiresAt })
         count++
       }
-      setImportMsg(t('settings', 'language') === 'en'
+      // BUG-13 FIX: countdowns were missing from export/import
+      for (const c of (data.countdowns || [])) {
+        await addCountdown(user.uid, { title: c.title, notes: c.notes, targetDate: c.targetDate, tags: c.tags, isFavourite: c.isFavourite, reminderAt: c.reminderAt })
+        count++
+      }
+      setImportMsg(settings.language === 'en'
         ? `Successfully imported ${count} items`
         : `成功匯入 ${count} 筆資料`)
     } catch (e) {
