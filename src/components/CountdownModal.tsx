@@ -52,11 +52,11 @@ export default function CountdownModal({ item, onClose, allTags }: Props) {
         // BUG-25 FIX: always include notes and reminderAt (even as null/empty)
         // so that clearing them in edit mode actually removes the old values
         // from Firestore. Previously omitting the keys left old values in place.
-        notes: notes.trim() || null,
+        notes: notes.trim() || undefined,
         targetDate: localDateToMs(targetDate),
         tags,
         isFavourite: item?.isFavourite || false,
-        reminderAt: reminderAt ? new Date(reminderAt).getTime() : null,
+        reminderAt: reminderAt ? new Date(reminderAt).getTime() : undefined,
       }
       if (isEdit) {
         await update(item.id, data)

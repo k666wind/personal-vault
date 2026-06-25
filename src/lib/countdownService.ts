@@ -1,17 +1,25 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, onSnapshot, serverTimestamp,
-  Timestamp,
+  Timestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { DateCountdown } from '../types'
 
 const COL = 'countdowns'
 
-// Strip undefined values — Firestore rejects them
+// Strip undefined for addDoc
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
+// BUG-25 FIX: For updateDoc, convert undefined → deleteField() so that
+// clearing notes or reminderAt actually removes the Firestore field.
+function prepareUpdate(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, v === undefined ? deleteField() : v])
   )
 }
 
@@ -64,7 +72,8 @@ export async function updateCountdown(
   id: string,
   data: Partial<Omit<DateCountdown, 'id' | 'userId' | 'createdAt'>>
 ) {
-  const payload = stripUndefined({ ...data, updatedAt: serverTimestamp() })
+  // BUG-25 FIX: use prepareUpdate so clearing notes/reminderAt removes them
+  const payload = prepareUpdate({ ...data, updatedAt: serverTimestamp() })
   await updateDoc(doc(db, COL, id), payload)
 }
 

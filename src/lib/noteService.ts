@@ -1,20 +1,29 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, onSnapshot, serverTimestamp,
-  Timestamp,
+  Timestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Note } from '../types'
 
+const COL = 'notes'
 
-// Strip undefined values — Firestore rejects them
+// Strip undefined values for addDoc (Firestore rejects undefined)
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined)
   )
 }
 
-const COL = 'notes'
+// BUG-25 FIX: For updateDoc, keys whose value is undefined must be sent as
+// deleteField() so Firestore actually removes the old value. Without this,
+// omitting the key leaves the old value in place (e.g. clearing a reminder
+// would have no effect because updateDoc only touches provided keys).
+function prepareUpdate(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, v === undefined ? deleteField() : v])
+  )
+}
 
 function toNote(id: string, data: Record<string, unknown>): Note {
   return {
@@ -63,7 +72,13 @@ export async function updateNote(
   id: string,
   data: Partial<Omit<Note, 'id' | 'userId' | 'createdAt'>>
 ) {
-  await updateDoc(doc(db, COL, id), stripUndefined({  ...data, updatedAt: serverTimestamp()  } as Record<string, unknown>))
+  // BUG-25 FIX: use prepareUpdate (undefined → deleteField) instead of
+  // stripUndefined (undefined → omit), so clearing reminderAt actually
+  // removes it from Firestore rather than leaving the old value intact.
+  await updateDoc(doc(db, COL, id), prepareUpdate({
+    ...data,
+    updatedAt: serverTimestamp(),
+  } as Record<string, unknown>))
 }
 
 export async function deleteNote(id: string) {

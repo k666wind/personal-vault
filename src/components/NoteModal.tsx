@@ -94,7 +94,7 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
         content,
         tags,
         isFavourite: note?.isFavourite || false,
-        reminderAt: reminderAt ? new Date(reminderAt).getTime() : null,
+        reminderAt: reminderAt ? new Date(reminderAt).getTime() : undefined,
       }
       if (isEdit) {
         await update(note.id, data)
