@@ -3,8 +3,6 @@ import { persist } from 'zustand/middleware'
 import type { Language, Theme, User, AppSettings } from '../types'
 import { translations } from '../i18n/translations'
 
-// Use undefined as the "loading" sentinel so App.tsx can show a loading screen
-// before Firebase Auth resolves. null = confirmed logged out.
 type UserState = User | null | undefined
 
 interface AppStore {
@@ -26,28 +24,21 @@ interface AppStore {
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      // undefined = auth not yet resolved (loading state)
       user: undefined as UserState,
       setUser: (user) => set({ user }),
 
       settings: {
         language: 'zh',
-        theme: 'light',
+        theme: 'system',   // F-18: default to system preference
         claudeApiKey: '',
         passwordLockTimeout: 5,
       },
 
-      setLanguage: (lang) =>
-        set((s) => ({ settings: { ...s.settings, language: lang } })),
-
-      setTheme: (theme) =>
-        set((s) => ({ settings: { ...s.settings, theme } })),
-
-      setClaudeApiKey: (key) =>
-        set((s) => ({ settings: { ...s.settings, claudeApiKey: key } })),
-
-      setLockTimeout: (minutes) =>
-        set((s) => ({ settings: { ...s.settings, passwordLockTimeout: minutes } })),
+      setLanguage: (lang) => set((s) => ({ settings: { ...s.settings, language: lang } })),
+      // F-18: theme can now be 'light' | 'dark' | 'system'
+      setTheme: (theme) => set((s) => ({ settings: { ...s.settings, theme } })),
+      setClaudeApiKey: (key) => set((s) => ({ settings: { ...s.settings, claudeApiKey: key } })),
+      setLockTimeout: (minutes) => set((s) => ({ settings: { ...s.settings, passwordLockTimeout: minutes } })),
 
       t: (section: string, key: string) => {
         const lang = get().settings.language
@@ -65,11 +56,7 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'vault-app-store',
-      // Do NOT persist user — Firebase Auth restores it on reload.
-      // Persisting user caused the bug where user was never undefined,
-      // so the loading screen was never shown.
       partialize: (s) => ({ settings: s.settings, recentItems: s.recentItems }),
-      // After rehydration, ensure user stays undefined until Firebase resolves
       onRehydrateStorage: () => (state) => {
         if (state) state.user = undefined
       },

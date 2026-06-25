@@ -6,10 +6,12 @@ import { useAuth } from '../hooks/useAuth'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useNoteStore } from '../stores/noteStore'
 import { useRecipeStore } from '../stores/recipeStore'
-import { usePasswordStore } from '../stores/passwordStore'
 import { useCountdownStore } from '../stores/countdownStore'
 import { addCountdown } from '../lib/countdownService'
+import { parseExternalExport, type ImportFormat } from '../lib/externalImport'
+import { usePasswordStore } from '../stores/passwordStore'
 import { exportJson, exportCsv, importJson, type VaultExport } from '../lib/exportImport'
+import { encrypt } from '../lib/crypto'
 import { addBookmark } from '../lib/bookmarkService'
 import { addNote } from '../lib/noteService'
 import { addRecipe } from '../lib/recipeService'
@@ -23,12 +25,16 @@ export default function SettingsPage() {
   const [apiKeyInput, setApiKeyInput] = useState(settings.claudeApiKey || '')
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState('')
+  // F-08: external password manager import
+  const [extImporting, setExtImporting] = useState(false)
+  const [extImportMsg, setExtImportMsg] = useState('')
+  const extImportRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
 
   const { bookmarks } = useBookmarkStore()
   const { notes } = useNoteStore()
   const { recipes } = useRecipeStore()
-  const { entries: passwords } = usePasswordStore()
+  const { entries: passwords, masterPassword } = usePasswordStore()
   const { items: countdowns } = useCountdownStore()
 
   const handleExportJson = () => {
@@ -76,6 +82,53 @@ export default function SettingsPage() {
     }
   }
 
+  // F-08: Import from Chrome / 1Password / Bitwarden
+  const handleExternalImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (!masterPassword) {
+      setExtImportMsg(settings.language === 'en'
+        ? 'Please unlock your password vault first'
+        : '請先解鎖密碼庫再匯入')
+      return
+    }
+    setExtImporting(true)
+    setExtImportMsg('')
+    try {
+      const text = await file.text()
+      const { format, entries: imported } = parseExternalExport(text)
+      if (format === 'unknown' || imported.length === 0) {
+        setExtImportMsg(t('settings', 'importExternalFail'))
+        return
+      }
+      const formatNames: Record<ImportFormat, string> = {
+        chrome: 'Chrome', '1password': '1Password', bitwarden: 'Bitwarden', unknown: ''
+      }
+      let count = 0
+      for (const imp of imported) {
+        const encryptedPassword = encrypt(imp.password, masterPassword)
+        await addPasswordEntry(user.uid, {
+          site: imp.site,
+          username: imp.username,
+          encryptedPassword,
+          notes: imp.notes,
+          tags: [],
+          isFavourite: false,
+        })
+        count++
+      }
+      setExtImportMsg(
+        t('settings', 'importExternalSuccess').replace('{n}', String(count)) +
+        ` (${formatNames[format]})`
+      )
+    } catch (err) {
+      setExtImportMsg(t('error', 'saveFailed') + (err instanceof Error ? err.message : ''))
+    } finally {
+      setExtImporting(false)
+      if (extImportRef.current) extImportRef.current.value = ''
+    }
+  }
+
   return (
     <div className="page">
       <header className="page-header">
@@ -114,6 +167,13 @@ export default function SettingsPage() {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <Moon size={14} /> {t('settings', 'themeDark')}
+            </button>
+            <button
+              className={settings.theme === 'system' ? 'active' : ''}
+              onClick={() => setTheme('system')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              💻 {t('settings', 'themeSystem')}
             </button>
           </div>
         </div>
@@ -174,6 +234,23 @@ export default function SettingsPage() {
           {importMsg && (
             <p className={`import-msg ${importMsg.includes('失敗') || importMsg.includes('failed') ? 'error-msg' : 'success-msg'}`}>
               {importMsg}
+            </p>
+          )}
+        </div>
+
+        {/* F-08: External password manager import */}
+        <div className="settings-section">
+          <p className="settings-label">{t('settings', 'importExternal')}</p>
+          <p className="settings-hint">{t('settings', 'importExternalHint')}</p>
+          <button className="btn-export" onClick={() => extImportRef.current?.click()} disabled={extImporting}>
+            {extImporting
+              ? <><span className="spin" style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', marginRight: 6 }} /> {t('common', 'loading')}</>
+              : <><Upload size={15} /> {t('settings', 'importExternal')}</>}
+          </button>
+          <input ref={extImportRef} type="file" accept=".csv,.json" style={{ display: 'none' }} onChange={handleExternalImport} />
+          {extImportMsg && (
+            <p className={`import-msg ${extImportMsg.includes('失敗') || extImportMsg.includes('failed') || extImportMsg.includes('Error') || extImportMsg.includes('無法') || extImportMsg.includes('請先') ? 'error-msg' : 'success-msg'}`}>
+              {extImportMsg}
             </p>
           )}
         </div>

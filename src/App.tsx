@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
+import { useSystemTheme } from './hooks/useSystemTheme'
 import { useAppStore } from './stores/appStore'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
@@ -43,14 +44,12 @@ function AuthenticatedApp() {
 // window.location.pathname. This correctly respects the basename and avoids
 // brittle string matching against the raw window pathname.
 function AppRouter() {
-  const { user, settings } = useAppStore()
+  const { user } = useAppStore()
   const location = useLocation()
   useAuth()
 
-  // Apply theme to document root
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', settings.theme)
-  }, [settings.theme])
+  // F-18: apply theme (including system preference tracking)
+  useSystemTheme()
 
   // BUG-01 FIX: user===undefined means Firebase Auth hasn't resolved yet
   if (user === undefined) {
