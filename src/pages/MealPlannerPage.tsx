@@ -36,7 +36,7 @@ function prevWeek(ws: number): number { return ws - 7 * 24 * 60 * 60 * 1000 }
 function nextWeek(ws: number): number { return ws + 7 * 24 * 60 * 60 * 1000 }
 
 export default function MealPlannerPage() {
-  const { t, user, settings } = useAppStore()
+  const { user, settings } = useAppStore()
   const { recipes, init: initRecipes, teardown: tearRecipes } = useRecipeStore()
   const { plan, weekStart, loading, init, goToWeek, teardown, setSlot } = useMealPlanStore()
   const navigate = useNavigate()

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, ShoppingCart, Calendar } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, ShoppingCart } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import RecipeCard from '../components/RecipeCard'
