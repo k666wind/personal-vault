@@ -33,7 +33,7 @@ export default function BookmarksPage() {
   }, [bookmarks])
 
   const filtered = useMemo(() => {
-    return bookmarks.filter((b) => {
+    const f = bookmarks.filter((b) => {
       if (showFavOnly && !b.isFavourite) return false
       if (filterTag && !b.tags.includes(filterTag)) return false
       if (search) {
@@ -43,6 +43,8 @@ export default function BookmarksPage() {
       }
       return true
     })
+    // F-03: pinned items always appear first
+    return [...f.filter((b) => b.isPinned), ...f.filter((b) => !b.isPinned)]
   }, [bookmarks, search, filterTag, showFavOnly])
 
   const toggleSelect = (id: string) => {

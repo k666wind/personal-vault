@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/appStore'
 import { usePasswordStore } from '../stores/passwordStore'
 import TagInput from './TagInput'
 import { scorePassword, generatePassword } from '../lib/crypto'
+import { isValidTOTPSecret, parseOtpAuthUri } from '../lib/totp'
 import type { PasswordEntry } from '../types'
 
 interface Props {
@@ -33,6 +34,10 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
   const [genLength, setGenLength] = useState(16)
   const [genSymbols, setGenSymbols] = useState(true)
   const [showGenerator, setShowGenerator] = useState(false)
+  // F-01: TOTP secret
+  const [totpSecret, setTotpSecret] = useState(entry?.totpSecret || '')
+  const [totpError, setTotpError] = useState('')
+  const [showTotpField, setShowTotpField] = useState(!!entry?.totpSecret)
 
   const strength = scorePassword(password)
   const strengthLabels = [t('password', 'weak'), t('password', 'weak'), t('password', 'fair'), t('password', 'strong'), t('password', 'veryStrong')]
@@ -50,7 +55,14 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
     if (!password) { setError(t('password', 'passwordRequired')); return }
     setSaving(true)
     try {
-      const extra: { notes: string; tags: string[]; expiresAt?: number } = { notes, tags }
+      // F-01: validate and include TOTP secret
+      if (totpSecret && !isValidTOTPSecret(totpSecret)) {
+        setTotpError(t('password', 'totpInvalid'))
+        setSaving(false)
+        return
+      }
+      const extra: { notes: string; tags: string[]; expiresAt?: number; totpSecret?: string } = { notes, tags }
+      if (totpSecret.trim()) extra.totpSecret = totpSecret.trim().replace(/\s/g, '').toUpperCase()
       if (expiresAt) extra.expiresAt = new Date(expiresAt).getTime()
       if (isEdit) {
         await update(entry.id, site.trim(), username.trim(), password, extra)
@@ -160,6 +172,42 @@ export default function PasswordModal({ entry, onClose, allTags }: Props) {
           <div className="field">
             <label className="field-label">{t('common', 'tags')}</label>
             <TagInput tags={tags} onChange={setTags} suggestions={allTags} />
+          </div>
+
+          {/* F-01: TOTP / 2FA section */}
+          <div className="field">
+            <div className="field-label-row">
+              <label className="field-label">
+                {t('password', 'totp')}
+                <span className="optional-hint"> {t('common', 'optional')}</span>
+              </label>
+              <button className="btn-add-row" onClick={() => { setShowTotpField(!showTotpField); setTotpSecret(''); setTotpError('') }}>
+                {showTotpField ? t('password', 'totpRemove') : t('password', 'totpAdd')}
+              </button>
+            </div>
+            {showTotpField && (
+              <div>
+                <input
+                  className="input"
+                  placeholder={t('password', 'totpSecretPlaceholder')}
+                  value={totpSecret}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setTotpSecret(val)
+                    setTotpError('')
+                    // Auto-parse otpauth:// URIs pasted from QR code apps
+                    if (val.startsWith('otpauth://')) {
+                      const parsed = parseOtpAuthUri(val)
+                      if (parsed) setTotpSecret(parsed.secret)
+                    }
+                  }}
+                />
+                {totpError && <p className="error-msg" style={{ marginTop: 4 }}>{totpError}</p>}
+                <p style={{ fontSize: 11, color: 'var(--color-text-3)', marginTop: 4 }}>
+                  💡 支援 Base32 Secret 或 otpauth:// URI（從 QR Code App 複製）
+                </p>
+              </div>
+            )}
           </div>
 
           {error && <p className="error-msg">{error}</p>}

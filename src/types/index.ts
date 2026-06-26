@@ -1,5 +1,5 @@
 export type Language = 'zh' | 'en'
-export type Theme = 'light' | 'dark'
+export type Theme = 'light' | 'dark' | 'system'
 
 export type ModuleType = 'recipe' | 'bookmark' | 'password' | 'note' | 'countdown'
 
@@ -63,6 +63,9 @@ export interface Bookmark {
   favicon?: string
   tags: string[]
   isFavourite: boolean
+  isPinned?: boolean   // F-03
+  isRead?: boolean     // future F-09
+  readAt?: number      // future F-09
   createdAt: number
   updatedAt: number
 }
@@ -74,9 +77,11 @@ export interface PasswordEntry {
   site: string
   username: string
   encryptedPassword: string
+  totpSecret?: string  // F-01 TOTP
   notes?: string
   tags: string[]
   isFavourite: boolean
+  isPinned?: boolean   // F-03
   expiresAt?: number
   createdAt: number
   updatedAt: number
@@ -90,6 +95,7 @@ export interface Note {
   content: string
   tags: string[]
   isFavourite: boolean
+  isPinned?: boolean   // F-03
   reminderAt?: number
   createdAt: number
   updatedAt: number
@@ -101,9 +107,10 @@ export interface DateCountdown {
   userId: string
   title: string
   notes?: string
-  targetDate: number      // epoch ms (date only, midnight local)
+  targetDate: number
   tags: string[]
   isFavourite: boolean
+  isPinned?: boolean   // F-03
   reminderAt?: number
   createdAt: number
   updatedAt: number

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, ExternalLink, Edit2, Trash2 } from 'lucide-react'
+import { Star, ExternalLink, Edit2, Trash2, Pin, PinOff } from 'lucide-react'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useAppStore } from '../stores/appStore'
 import { getDomain } from '../lib/urlMeta'
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function BookmarkCard({ bookmark, onEdit }: Props) {
-  const { toggleFavourite, remove } = useBookmarkStore()
+  const { toggleFavourite, remove, update } = useBookmarkStore()
   const { t } = useAppStore()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -40,6 +40,15 @@ export default function BookmarkCard({ bookmark, onEdit }: Props) {
 
         {/* Actions */}
         <div className="card-actions">
+          <button
+            className="icon-btn"
+            onClick={() => update(bookmark.id, { isPinned: !bookmark.isPinned })}
+            aria-label={bookmark.isPinned ? t('common', 'unpin') : t('common', 'pin')}
+          >
+            {bookmark.isPinned
+              ? <PinOff size={15} style={{ color: 'var(--color-primary)' }} />
+              : <Pin size={15} />}
+          </button>
           <button
             className={`icon-btn star-btn ${bookmark.isFavourite ? 'starred' : ''}`}
             onClick={() => toggleFavourite(bookmark.id, bookmark.isFavourite)}

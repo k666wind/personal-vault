@@ -42,7 +42,7 @@ export default function PasswordsPage() {
   }, [entries])
 
   const filtered = useMemo(() => {
-    return entries.filter((e) => {
+    const f = entries.filter((e) => {
       if (showFavOnly && !e.isFavourite) return false
       if (filterTag && !e.tags.includes(filterTag)) return false
       if (search) {
@@ -52,6 +52,8 @@ export default function PasswordsPage() {
       }
       return true
     })
+    // F-03: pinned entries always appear first
+    return [...f.filter((e) => e.isPinned), ...f.filter((e) => !e.isPinned)]
   }, [entries, search, filterTag, showFavOnly])
 
   const toggleSelect = (id: string) => {

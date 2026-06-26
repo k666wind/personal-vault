@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, Edit2, Trash2, Bell } from 'lucide-react'
+import { Star, Edit2, Trash2, Bell, Pin, PinOff } from 'lucide-react'
 import { useNoteStore } from '../stores/noteStore'
 
 import type { Note } from '../types'
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function NoteCard({ note, onEdit }: Props) {
-  const { toggleFavourite, remove } = useNoteStore()
+  const { toggleFavourite, remove, update } = useNoteStore()
     const [confirmDelete, setConfirmDelete] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
@@ -25,8 +25,18 @@ export default function NoteCard({ note, onEdit }: Props) {
   return (
     <div className="card note-card">
       <div className="note-card-top">
-        <h3 className="note-title">{note.title}</h3>
+        <h3 className="note-title">
+            {note.isPinned && <Pin size={11} style={{ color: 'var(--color-primary)', marginRight: 4, display: 'inline', verticalAlign: 'middle' }} />}
+            {note.title}
+          </h3>
         <div className="card-actions">
+          <button
+            className={`icon-btn ${note.isPinned ? 'pinned-btn' : ''}`}
+            onClick={() => update(note.id, { isPinned: !note.isPinned })}
+            title={note.isPinned ? 'Unpin' : 'Pin'}
+          >
+            {note.isPinned ? <PinOff size={15} style={{ color: 'var(--color-primary)' }} /> : <Pin size={15} />}
+          </button>
           <button
             className={`icon-btn star-btn ${note.isFavourite ? 'starred' : ''}`}
             onClick={() => toggleFavourite(note.id, note.isFavourite)}

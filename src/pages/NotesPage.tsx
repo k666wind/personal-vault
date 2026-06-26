@@ -33,7 +33,7 @@ export default function NotesPage() {
   }, [notes])
 
   const filtered = useMemo(() => {
-    return notes.filter((n) => {
+    const f = notes.filter((n) => {
       if (showFavOnly && !n.isFavourite) return false
       if (filterTag && !n.tags.includes(filterTag)) return false
       if (search) {
@@ -43,6 +43,8 @@ export default function NotesPage() {
       }
       return true
     })
+    // F-03: pinned items always appear first
+    return [...f.filter((n) => n.isPinned), ...f.filter((n) => !n.isPinned)]
   }, [notes, search, filterTag, showFavOnly])
 
   const toggleSelect = (id: string) => {
