@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ShieldCheck, ShieldAlert, Copy, Lock, AlertTriangle, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ShieldCheck, ShieldAlert, Copy, Lock, RefreshCw } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { usePasswordStore } from '../stores/passwordStore'
 import { scorePassword } from '../lib/crypto'

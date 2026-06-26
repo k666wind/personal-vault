@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useSystemTheme } from './hooks/useSystemTheme'
 import { useAppStore } from './stores/appStore'
