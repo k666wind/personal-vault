@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useSystemTheme } from './hooks/useSystemTheme'
+import { useReminderChecker } from './hooks/useReminderChecker'
 import { useAppStore } from './stores/appStore'
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
@@ -15,6 +15,7 @@ import PasswordHealthPage from './pages/PasswordHealthPage'
 import ShoppingListPage from './pages/ShoppingListPage'
 import TagManagerPage from './pages/TagManagerPage'
 import SharedRecipePage from './pages/SharedRecipePage'
+import MealPlannerPage from './pages/MealPlannerPage'
 import BottomNav from './components/BottomNav'
 
 function AuthenticatedApp() {
@@ -32,6 +33,7 @@ function AuthenticatedApp() {
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/countdown" element={<CountdownPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/meal-planner" element={<MealPlannerPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -50,6 +52,8 @@ function AppRouter() {
 
   // F-18: apply theme (including system preference tracking)
   useSystemTheme()
+  // F-07: check reminders every 60s while app is open
+  useReminderChecker()
 
   // BUG-01 FIX: user===undefined means Firebase Auth hasn't resolved yet
   if (user === undefined) {
