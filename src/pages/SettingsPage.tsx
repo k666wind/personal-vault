@@ -11,7 +11,6 @@ import { addCountdown } from '../lib/countdownService'
 import { parseExternalExport, type ImportFormat } from '../lib/externalImport'
 import { usePasswordStore } from '../stores/passwordStore'
 import { exportJson, exportCsv, importJson, type VaultExport } from '../lib/exportImport'
-import { requestNotificationPermission, getNotificationPermission } from '../lib/notifications'
 import { encrypt } from '../lib/crypto'
 import { addBookmark } from '../lib/bookmarkService'
 import { addNote } from '../lib/noteService'
@@ -29,8 +28,6 @@ export default function SettingsPage() {
   // F-08: external password manager import
   const [extImporting, setExtImporting] = useState(false)
   const [extImportMsg, setExtImportMsg] = useState('')
-  // F-07: notification permission
-  const [notifPermission, setNotifPermission] = useState(getNotificationPermission)
   const extImportRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
 
@@ -83,12 +80,6 @@ export default function SettingsPage() {
       setImporting(false)
       if (importRef.current) importRef.current.value = ''
     }
-  }
-
-  // F-07: Request notification permission
-  const handleRequestNotification = async () => {
-    const result = await requestNotificationPermission()
-    setNotifPermission(result)
   }
 
   // F-08: Import from Chrome / 1Password / Bitwarden
@@ -246,27 +237,6 @@ export default function SettingsPage() {
             </p>
           )}
         </div>
-
-        {/* F-07: Notification permission */}
-        {'Notification' in window && (
-          <div className="settings-section">
-            <p className="settings-label">{isEn ? 'Reminder Notifications' : '提醒通知'}</p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <p style={{ fontSize: 13, color: 'var(--color-text-2)' }}>
-                {notifPermission === 'granted'
-                  ? (isEn ? '✅ Notifications enabled' : '✅ 通知已開啟')
-                  : notifPermission === 'denied'
-                  ? (isEn ? '❌ Blocked by browser — enable in browser settings' : '❌ 已被瀏覽器封鎖，請在瀏覽器設定開啟')
-                  : (isEn ? 'Enable to receive reminder alerts' : '開啟以接收提醒通知')}
-              </p>
-              {notifPermission !== 'granted' && notifPermission !== 'denied' && (
-                <button className="btn-primary" style={{ whiteSpace: 'nowrap', padding: '8px 14px' }} onClick={handleRequestNotification}>
-                  {isEn ? 'Enable' : '開啟'}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* F-08: External password manager import */}
         <div className="settings-section">

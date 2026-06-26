@@ -134,22 +134,3 @@ export interface AppSettings {
   claudeApiKey?: string
   passwordLockTimeout: number
 }
-
-// ── Meal Planner ─────────────────────────────────────────
-export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack'
-
-export interface MealPlanEntry {
-  recipeId: string
-  recipeName: string  // denormalised for offline display
-}
-
-// weekStart = Monday midnight (local) epoch ms
-export interface MealPlan {
-  id: string
-  userId: string
-  weekStart: number
-  // key = "mon-dinner", "tue-lunch", etc.
-  slots: Record<string, MealPlanEntry>
-  createdAt: number
-  updatedAt: number
-}

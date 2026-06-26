@@ -4,8 +4,6 @@ import { useAppStore } from '../stores/appStore'
 import { useNoteStore } from '../stores/noteStore'
 import TagInput from './TagInput'
 import OcrButton from './OcrButton'
-import { sanitizeHtml } from '../lib/sanitize'
-import { preprocessWikiLinks, renderWikiLinks, extractWikiLinks } from '../lib/wikilinks'
 import type { Note } from '../types'
 
 interface Props {
@@ -14,6 +12,37 @@ interface Props {
   allTags: string[]
 }
 
+// BUG-24 FIX: Sanitise marked output before injecting into DOM.
+// marked v5+ removed the built-in `sanitize` option. We implement a lightweight
+// allow-list sanitiser using the browser's own DOMParser, which is safe and
+// requires no extra dependency.
+function sanitizeHtml(html: string): string {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+
+  // Remove all script elements and event-handler attributes
+  const dangerous = doc.querySelectorAll('script, style, iframe, object, embed, form')
+  dangerous.forEach((el) => el.remove())
+
+  // Strip on* event attributes and javascript: hrefs from every element
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT)
+  let node: Node | null = walker.currentNode
+  while (node) {
+    const el = node as Element
+    for (const attr of Array.from(el.attributes)) {
+      if (
+        attr.name.startsWith('on') ||
+        (attr.name === 'href' && attr.value.trim().toLowerCase().startsWith('javascript:')) ||
+        (attr.name === 'src' && attr.value.trim().toLowerCase().startsWith('javascript:'))
+      ) {
+        el.removeAttribute(attr.name)
+      }
+    }
+    node = walker.nextNode()
+  }
+
+  return doc.body.innerHTML
+}
 
 export default function NoteModal({ note, onClose, allTags }: Props) {
   const { t, user } = useAppStore()
@@ -31,8 +60,6 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
   const [error, setError] = useState('')
   const [markdownPreview, setMarkdownPreview] = useState(false)
   const [renderedMd, setRenderedMd] = useState('')
-  // F-11: WikiLinks — track if user clicked a wikilink during preview
-  const [linkedNoteSearch, setLinkedNoteSearch] = useState('')
 
   const isEdit = !!note
 
@@ -44,12 +71,9 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
     if (!markdownPreview) {
       try {
         const { marked } = await import('marked')
-        // F-11: pre-process WikiLinks [[Title]] before marked parses
-        const withWiki = preprocessWikiLinks(content)
-        const raw = await marked.parse(withWiki)
-        // BUG-24 FIX: sanitise, then render WikiLinks as clickable anchors
-        const sanitized = sanitizeHtml(raw)
-        setRenderedMd(renderWikiLinks(sanitized, () => {}))
+        // BUG-24 FIX: sanitise the HTML output before rendering
+        const raw = await marked.parse(content)
+        setRenderedMd(sanitizeHtml(raw))
       } catch {
         setRenderedMd(`<pre>${content.replace(/</g, '&lt;')}</pre>`)
       }
@@ -134,17 +158,6 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
                 className="markdown-preview input"
                 style={{ minHeight: 180, overflowY: 'auto' }}
                 dangerouslySetInnerHTML={{ __html: renderedMd }}
-                onClick={(e) => {
-                  // F-11: handle WikiLink clicks via event delegation
-                  const target = e.target as HTMLElement
-                  const link = target.closest('[data-wikilink]') as HTMLElement | null
-                  if (link) {
-                    e.preventDefault()
-                    const title = link.getAttribute('data-wikilink') || ''
-                    // Set the search so the user can find the linked note
-                    setLinkedNoteSearch(title)
-                  }
-                }}
               />
             ) : (
               <textarea
@@ -156,19 +169,6 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
               />
             )}
           </div>
-
-          {/* F-11: WikiLinks hint — show [[links]] extracted from content */}
-          {(() => {
-            const links = extractWikiLinks(content)
-            if (links.length === 0) return null
-            return (
-              <div style={{ fontSize: 11, color: 'var(--color-text-3)', padding: '4px 0' }}>
-                🔗 WikiLinks: {links.map((l) => (
-                  <span key={l} className="tag-chip" style={{ marginRight: 4, fontSize: 10 }}>[[{l}]]</span>
-                ))}
-              </div>
-            )
-          })()}
 
           {/* Tags */}
           <div className="field">
