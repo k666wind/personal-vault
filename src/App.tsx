@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useSystemTheme } from './hooks/useSystemTheme'
 import { useReminderChecker } from './hooks/useReminderChecker'
@@ -61,7 +61,7 @@ function AppRouter() {
   }
 
   // Public shared recipe page — accessible without login
-  // Check the router-aware pathname (strips basename automatically)
+  // HashRouter: route info is in location.pathname (within hash), not window.location.pathname
   if (!user && location.pathname.startsWith('/shared/recipe/')) {
     return (
       <Routes>
@@ -76,10 +76,9 @@ function AppRouter() {
 }
 
 export default function App() {
-  const basename = import.meta.env.VITE_BASE_PATH || '/'
   return (
-    <BrowserRouter basename={basename}>
+    <HashRouter>
       <AppRouter />
-    </BrowserRouter>
+    </HashRouter>
   )
 }

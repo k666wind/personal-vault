@@ -15,15 +15,9 @@ export default function RecipeShareModal({ recipe, onClose }: Props) {
   const [copied, setCopied] = useState(false)
   const [toggling, setToggling] = useState(false)
 
-  // BUG-03 FIX: Build share URL from origin + basename only, NOT current pathname.
-  // Previously used window.location.pathname which included the current page path
-  // (e.g. /repo-name/recipes), producing broken URLs like:
-  //   https://user.github.io/repo-name/recipes/shared/recipe/123  ← WRONG
-  // Correct URL should be:
-  //   https://user.github.io/repo-name/shared/recipe/123
-  const basename = (import.meta.env.VITE_BASE_PATH as string | undefined) || '/'
-  const base = window.location.origin + basename.replace(/\/$/, '')
-  const shareUrl = `${base}/shared/recipe/${recipe.id}`
+  // HashRouter: share URL uses /#/shared/recipe/:id format
+  // This works on GitHub Pages without any server config
+  const shareUrl = `${window.location.origin}${window.location.pathname}#/shared/recipe/${recipe.id}`
 
   const handleTogglePublic = async () => {
     setToggling(true)
