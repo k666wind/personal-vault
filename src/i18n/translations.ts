@@ -203,7 +203,6 @@ export const translations = {
     wikilinks: {
       hint: '使用 [[筆記標題]] 連結其他筆記',
     },
-    },
     shopping: {
       title: '購物清單',
       empty: '購物清單係空，去食譜頁面選擇食材',
