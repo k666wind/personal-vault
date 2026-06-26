@@ -22,7 +22,7 @@ export function preprocessWikiLinks(markdown: string): string {
  * Called after DOMPurify-equivalent sanitisation (our DOMParser approach).
  * Returns HTML string with wikilinks rendered as clickable spans.
  */
-export function renderWikiLinks(html: string): string {
+export function renderWikiLinks(html: string, onNavigate: (title: string) => void): string {
   // We can't attach event listeners in a string, so we use data attributes
   // and attach a delegated listener on the preview container instead.
   return html.replace(

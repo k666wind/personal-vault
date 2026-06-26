@@ -1,6 +1,6 @@
 // F-10: Firestore service for MealPlan (one document per user per week)
 import {
-  collection, doc, setDoc, getDoc, updateDoc,
+  collection, doc, setDoc, getDoc, updateDoc, deleteDoc,
   query, where, orderBy, onSnapshot, serverTimestamp, Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'

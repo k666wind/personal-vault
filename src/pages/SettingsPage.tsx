@@ -34,8 +34,6 @@ export default function SettingsPage() {
   const extImportRef = useRef<HTMLInputElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
 
-  const isEn = settings.language === 'en'
-
   const { bookmarks } = useBookmarkStore()
   const { notes } = useNoteStore()
   const { recipes } = useRecipeStore()

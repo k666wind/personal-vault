@@ -31,6 +31,8 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
   const [error, setError] = useState('')
   const [markdownPreview, setMarkdownPreview] = useState(false)
   const [renderedMd, setRenderedMd] = useState('')
+  // F-11: WikiLinks — track if user clicked a wikilink during preview
+  const [linkedNoteSearch, setLinkedNoteSearch] = useState('')
 
   const isEdit = !!note
 
@@ -47,7 +49,7 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
         const raw = await marked.parse(withWiki)
         // BUG-24 FIX: sanitise, then render WikiLinks as clickable anchors
         const sanitized = sanitizeHtml(raw)
-        setRenderedMd(renderWikiLinks(sanitized))
+        setRenderedMd(renderWikiLinks(sanitized, () => {}))
       } catch {
         setRenderedMd(`<pre>${content.replace(/</g, '&lt;')}</pre>`)
       }
@@ -139,8 +141,8 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
                   if (link) {
                     e.preventDefault()
                     const title = link.getAttribute('data-wikilink') || ''
-                    // TODO F-11: navigate to linked note by title
-                    console.info('[WikiLink] clicked:', title)
+                    // Set the search so the user can find the linked note
+                    setLinkedNoteSearch(title)
                   }
                 }}
               />
