@@ -14,8 +14,9 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
   const [seconds, setSeconds] = useState(30)
   const [copied, setCopied] = useState(false)
 
-  const refresh = useCallback(() => {
-    setCode(generateTOTP(secret))
+  const refresh = useCallback(async () => {
+    const newCode = await generateTOTP(secret)
+    setCode(newCode)
     setSeconds(totpSecondsRemaining())
   }, [secret])
 
@@ -37,7 +38,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
     <span style={{ fontSize: 11, color: 'var(--color-error)' }}>⚠️ 無效 TOTP Secret</span>
   )
 
-  // Colour shifts red when < 7 seconds remain
   const urgency = seconds <= 7
   const progressPct = (seconds / 30) * 100
 
@@ -51,7 +51,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
     }}>
       <ShieldCheck size={14} style={{ color: urgency ? 'var(--color-error)' : 'var(--color-primary)', flexShrink: 0 }} />
 
-      {/* Code */}
       <span style={{
         fontFamily: 'monospace',
         fontSize: 18,
@@ -63,7 +62,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
         {code.slice(0, 3)} {code.slice(3)}
       </span>
 
-      {/* Countdown bar */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         <span style={{ fontSize: 10, color: urgency ? 'var(--color-error)' : 'var(--color-text-3)', fontVariantNumeric: 'tabular-nums' }}>
           {seconds}s
@@ -78,7 +76,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
         </div>
       </div>
 
-      {/* Copy */}
       <button
         className="icon-btn"
         onClick={handleCopy}
