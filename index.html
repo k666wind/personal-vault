@@ -9,6 +9,16 @@
     <meta name="apple-mobile-web-app-title" content="Vault" />
     <title>Personal Vault</title>
     <link rel="icon" type="image/svg+xml" href="/vault.svg" />
+    <script>
+      // GitHub Pages SPA: restore path saved by 404.html
+      (function () {
+        var p = window.location.search.match(/[?&]p=([^&]*)/);
+        if (p) {
+          var path = decodeURIComponent(p[1]);
+          window.history.replaceState(null, '', '/' + path);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

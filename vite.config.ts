@@ -2,8 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const basePath = process.env.VITE_BASE_PATH || '/'
+
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH || '/',
+  base: basePath,
   plugins: [
     react(),
     VitePWA({
@@ -17,41 +19,41 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
+        // FIX: scope and start_url must match the GitHub Pages subdirectory
+        scope: basePath,
+        start_url: basePath,
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
-        // P7-J: PWA Shortcuts — long-press app icon to quick-add
         shortcuts: [
           {
             name: '新增筆記',
             short_name: '筆記',
             description: '快速新增筆記',
-            url: '/notes?action=add',
+            url: 'notes?action=add',
             icons: [{ src: 'pwa-192.png', sizes: '192x192' }],
           },
           {
             name: '新增網址',
             short_name: '網址',
             description: '快速新增書籤',
-            url: '/bookmarks?action=add',
+            url: 'bookmarks?action=add',
             icons: [{ src: 'pwa-192.png', sizes: '192x192' }],
           },
           {
             name: '購物清單',
             short_name: '購物',
             description: '開啟購物清單',
-            url: '/shopping',
+            url: 'shopping',
             icons: [{ src: 'pwa-192.png', sizes: '192x192' }],
           },
           {
             name: '新增倒數',
             short_name: '倒數',
             description: '快速新增日子倒數',
-            url: '/countdown?action=add',
+            url: 'countdown?action=add',
             icons: [{ src: 'pwa-192.png', sizes: '192x192' }],
           },
         ],
