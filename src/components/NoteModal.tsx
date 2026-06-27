@@ -1,30 +1,24 @@
-import { useState } from 'react'
-import { X, Loader2, XCircle } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { X, Loader2, XCircle, Link } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useNoteStore } from '../stores/noteStore'
 import TagInput from './TagInput'
 import OcrButton from './OcrButton'
+import { extractWikiLinks, renderWikiLinks } from '../lib/wikilinks'
 import type { Note } from '../types'
 
 interface Props {
   note?: Note
   onClose: () => void
   allTags: string[]
+  onSearchNote?: (title: string) => void
 }
 
-// BUG-24 FIX: Sanitise marked output before injecting into DOM.
-// marked v5+ removed the built-in `sanitize` option. We implement a lightweight
-// allow-list sanitiser using the browser's own DOMParser, which is safe and
-// requires no extra dependency.
 function sanitizeHtml(html: string): string {
   const parser = new DOMParser()
   const doc = parser.parseFromString(html, 'text/html')
-
-  // Remove all script elements and event-handler attributes
   const dangerous = doc.querySelectorAll('script, style, iframe, object, embed, form')
   dangerous.forEach((el) => el.remove())
-
-  // Strip on* event attributes and javascript: hrefs from every element
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT)
   let node: Node | null = walker.currentNode
   while (node) {
@@ -40,19 +34,16 @@ function sanitizeHtml(html: string): string {
     }
     node = walker.nextNode()
   }
-
   return doc.body.innerHTML
 }
 
-export default function NoteModal({ note, onClose, allTags }: Props) {
+export default function NoteModal({ note, onClose, allTags, onSearchNote }: Props) {
   const { t, user } = useAppStore()
-  const { add, update } = useNoteStore()
+  const { add, update, notes } = useNoteStore()
 
   const [title, setTitle] = useState(note?.title || '')
   const [content, setContent] = useState(note?.content || '')
   const [tags, setTags] = useState<string[]>(note?.tags || [])
-  // BUG-25 FIX: Use null sentinel to distinguish "no reminder" vs "unchanged".
-  // Empty string means user cleared the field; we must send null to Firestore.
   const [reminderAt, setReminderAt] = useState<string>(
     note?.reminderAt ? new Date(note.reminderAt).toISOString().slice(0, 16) : ''
   )
@@ -60,8 +51,15 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
   const [error, setError] = useState('')
   const [markdownPreview, setMarkdownPreview] = useState(false)
   const [renderedMd, setRenderedMd] = useState('')
+  const previewRef = useRef<HTMLDivElement>(null)
 
   const isEdit = !!note
+
+  // F-11: Build a map of note title → id for WikiLink resolution
+  const notesByTitle = new Map(notes.map((n) => [n.title, n.id]))
+
+  // F-11: WikiLink hints (show linked note titles below textarea)
+  const wikiLinks = extractWikiLinks(content)
 
   const handleOcr = (text: string) => {
     setContent((prev) => prev ? `${prev}\n\n${text}` : text)
@@ -71,9 +69,10 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
     if (!markdownPreview) {
       try {
         const { marked } = await import('marked')
-        // BUG-24 FIX: sanitise the HTML output before rendering
         const raw = await marked.parse(content)
-        setRenderedMd(sanitizeHtml(raw))
+        const sanitized = sanitizeHtml(raw)
+        // F-11: render WikiLinks in the preview HTML
+        setRenderedMd(renderWikiLinks(sanitized, () => {}, notesByTitle))
       } catch {
         setRenderedMd(`<pre>${content.replace(/</g, '&lt;')}</pre>`)
       }
@@ -81,14 +80,27 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
     setMarkdownPreview(!markdownPreview)
   }
 
+  // F-11: Handle WikiLink clicks via event delegation on the preview div
+  useEffect(() => {
+    const div = previewRef.current
+    if (!div) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const wl = target.closest('[data-wikilink]')
+      if (wl) {
+        const linkTitle = wl.getAttribute('data-wikilink') || ''
+        onSearchNote?.(linkTitle)
+        onClose()
+      }
+    }
+    div.addEventListener('click', handler)
+    return () => div.removeEventListener('click', handler)
+  }, [markdownPreview, onSearchNote, onClose])
+
   const handleSave = async () => {
     if (!title.trim()) { setError(t('note', 'titleRequired')); return }
     setSaving(true)
     try {
-      // BUG-25 FIX: always include reminderAt in the update payload.
-      // When the user clears the field (reminderAt === ''), we must explicitly
-      // send null so Firestore's updateDoc removes the old value. Previously,
-      // omitting the key meant the old reminderAt persisted forever.
       const data = {
         title: title.trim(),
         content,
@@ -143,11 +155,7 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
             <div className="field-label-row">
               <label className="field-label">{t('note', 'content')}</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  className="btn-add-row"
-                  onClick={handlePreviewToggle}
-                  style={{ fontSize: 11 }}
-                >
+                <button className="btn-add-row" onClick={handlePreviewToggle} style={{ fontSize: 11 }}>
                   {markdownPreview ? '✏️ ' + t('common', 'edit') : '👁 MD'}
                 </button>
                 <OcrButton onExtracted={handleOcr} label={t('note', 'extractFromImage')} />
@@ -155,6 +163,7 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
             </div>
             {markdownPreview ? (
               <div
+                ref={previewRef}
                 className="markdown-preview input"
                 style={{ minHeight: 180, overflowY: 'auto' }}
                 dangerouslySetInnerHTML={{ __html: renderedMd }}
@@ -170,13 +179,35 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
             )}
           </div>
 
+          {/* F-11: WikiLinks hint */}
+          {wikiLinks.length > 0 && (
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: -8, marginBottom: 4,
+            }}>
+              <Link size={12} style={{ color: 'var(--color-text-3)', marginTop: 2 }} />
+              {wikiLinks.map((wl, i) => {
+                const exists = notesByTitle.has(wl)
+                return (
+                  <span key={i} style={{
+                    fontSize: 11, padding: '2px 7px',
+                    borderRadius: 12,
+                    background: exists ? 'var(--color-primary-light)' : 'var(--color-surface-2)',
+                    color: exists ? 'var(--color-primary)' : 'var(--color-text-3)',
+                  }}>
+                    {wl}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+
           {/* Tags */}
           <div className="field">
             <label className="field-label">{t('common', 'tags')}</label>
             <TagInput tags={tags} onChange={setTags} suggestions={allTags} />
           </div>
 
-          {/* Reminder — OPTIONAL */}
+          {/* Reminder */}
           <div className="field">
             <div className="field-label-row">
               <label className="field-label">
@@ -196,11 +227,6 @@ export default function NoteModal({ note, onClose, allTags }: Props) {
               onChange={(e) => setReminderAt(e.target.value)}
             />
           </div>
-
-          {/* BUG-30 FIX: clarify that reminders are display-only (no push notification) */}
-          <p style={{ fontSize: 11, color: 'var(--color-text-3)', marginTop: -8 }}>
-            ⚠️ 提醒只會在 App 開啟時顯示，不會發送系統通知
-          </p>
 
           {error && <p className="error-msg">{error}</p>}
         </div>

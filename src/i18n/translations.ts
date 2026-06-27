@@ -458,6 +458,20 @@ export const translations = {
       allDone: 'All done!',
       items: 'items',
     },
+    mealPlanner: {
+      title: 'Meal Planner',
+      breakfast: 'Breakfast',
+      lunch: 'Lunch',
+      dinner: 'Dinner',
+      thisWeek: 'This Week',
+      addToShopping: 'Add to Shopping',
+      pickRecipe: 'Pick Recipe',
+      noRecipes: 'No recipes yet',
+    },
+    wikilinks: {
+      hint: '🔗 WikiLinks',
+      notFound: 'Note not found',
+    },
     tagManager: {
       title: 'Tag Manager',
       allTags: 'All Tags',

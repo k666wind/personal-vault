@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, ShoppingCart } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, ShoppingCart, CalendarDays } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import RecipeCard from '../components/RecipeCard'
@@ -134,6 +134,9 @@ export default function RecipesPage() {
       <header className="page-header">
         <h1>{t('recipe', 'title')}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="icon-btn" title="Meal Planner" onClick={() => navigate('/meal-planner')}>
+            <CalendarDays size={20} />
+          </button>
           <button className="icon-btn" style={{ position: 'relative' }} onClick={() => navigate('/shopping')}>
             <ShoppingCart size={19} />
             {shoppingCount > 0 && (

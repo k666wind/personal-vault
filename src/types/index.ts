@@ -134,3 +134,21 @@ export interface AppSettings {
   claudeApiKey?: string
   passwordLockTimeout: number
 }
+
+// ── Meal Planner (F-10) ──────────────────────────────────
+export type MealSlotType = 'breakfast' | 'lunch' | 'dinner'
+
+export interface MealSlot {
+  type: MealSlotType
+  recipeId: string
+  recipeTitle: string
+}
+
+export interface MealPlan {
+  id: string
+  userId: string
+  weekStart: number   // epoch ms of Monday 00:00 local time
+  days: Record<string, MealSlot[]>  // key = 'Mon'|'Tue'|...'Sun'
+  createdAt: number
+  updatedAt: number
+}

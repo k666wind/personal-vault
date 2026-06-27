@@ -1713,3 +1713,15 @@ textarea.input {
   flex-shrink: 0;
   margin-left: auto;
 }
+
+/* ── Meal Planner (F-10) ────────────────────────────────── */
+.meal-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── WikiLinks (F-11) ───────────────────────────────────── */
+.markdown-preview [data-wikilink] {
+  cursor: pointer;
+  font-weight: 500;
+}
+.markdown-preview [data-wikilink]:hover {
+  text-decoration: underline;
+}

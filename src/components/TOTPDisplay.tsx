@@ -1,8 +1,9 @@
 // F-01: Inline TOTP code display component.
 // Shows the 6-digit code with a countdown ring and auto-refreshes every second.
+// Uses generateTOTPAsync() (Web Crypto) instead of the deprecated otplib sync call.
 import { useState, useEffect, useCallback } from 'react'
 import { Copy, Check, ShieldCheck } from 'lucide-react'
-import { generateTOTP, totpSecondsRemaining } from '../lib/totp'
+import { generateTOTPAsync, totpSecondsRemaining } from '../lib/totp'
 
 interface Props {
   secret: string
@@ -14,8 +15,9 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
   const [seconds, setSeconds] = useState(30)
   const [copied, setCopied] = useState(false)
 
-  const refresh = useCallback(() => {
-    setCode(generateTOTP(secret))
+  const refresh = useCallback(async () => {
+    const c = await generateTOTPAsync(secret)
+    setCode(c)
     setSeconds(totpSecondsRemaining())
   }, [secret])
 
@@ -37,7 +39,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
     <span style={{ fontSize: 11, color: 'var(--color-error)' }}>⚠️ 無效 TOTP Secret</span>
   )
 
-  // Colour shifts red when < 7 seconds remain
   const urgency = seconds <= 7
   const progressPct = (seconds / 30) * 100
 
@@ -51,7 +52,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
     }}>
       <ShieldCheck size={14} style={{ color: urgency ? 'var(--color-error)' : 'var(--color-primary)', flexShrink: 0 }} />
 
-      {/* Code */}
       <span style={{
         fontFamily: 'monospace',
         fontSize: 18,
@@ -63,7 +63,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
         {code.slice(0, 3)} {code.slice(3)}
       </span>
 
-      {/* Countdown bar */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         <span style={{ fontSize: 10, color: urgency ? 'var(--color-error)' : 'var(--color-text-3)', fontVariantNumeric: 'tabular-nums' }}>
           {seconds}s
@@ -78,7 +77,6 @@ export default function TOTPDisplay({ secret, onRecordActivity }: Props) {
         </div>
       </div>
 
-      {/* Copy */}
       <button
         className="icon-btn"
         onClick={handleCopy}

@@ -176,7 +176,12 @@ export default function NotesPage() {
       )}
 
       {showModal && (
-        <NoteModal note={editTarget} onClose={() => setShowModal(false)} allTags={allTags} />
+        <NoteModal
+          note={editTarget}
+          onClose={() => setShowModal(false)}
+          allTags={allTags}
+          onSearchNote={(title) => { setShowModal(false); setSearch(title) }}
+        />
       )}
     </div>
   )

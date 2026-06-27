@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Eye, EyeOff, Download, Upload, Loader2, Sun, Moon } from 'lucide-react'
+import { requestNotificationPermission, getNotificationPermission } from '../lib/notifications'
+import { ChevronLeft, Eye, EyeOff, Download, Upload, Loader2, Sun, Moon, Bell } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useAuth } from '../hooks/useAuth'
 import { useBookmarkStore } from '../stores/bookmarkStore'
@@ -29,6 +30,9 @@ export default function SettingsPage() {
   const [extImporting, setExtImporting] = useState(false)
   const [extImportMsg, setExtImportMsg] = useState('')
   const extImportRef = useRef<HTMLInputElement>(null)
+  // F-07: notification permission state
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default')
+  useEffect(() => { setNotifPermission(getNotificationPermission()) }, [])
   const importRef = useRef<HTMLInputElement>(null)
 
   const { bookmarks } = useBookmarkStore()
@@ -252,6 +256,33 @@ export default function SettingsPage() {
             <p className={`import-msg ${extImportMsg.includes('失敗') || extImportMsg.includes('failed') || extImportMsg.includes('Error') || extImportMsg.includes('無法') || extImportMsg.includes('請先') ? 'error-msg' : 'success-msg'}`}>
               {extImportMsg}
             </p>
+          )}
+        </div>
+
+        {/* F-07: Notification Permission */}
+        <div className="settings-section">
+          <p className="settings-label">
+            <Bell size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+            {settings.language === 'zh' ? '提醒通知' : 'Reminder Notifications'}
+          </p>
+          {notifPermission === 'granted' ? (
+            <p style={{ fontSize: 13, color: 'var(--color-success)' }}>
+              ✓ {settings.language === 'zh' ? '通知已開啟' : 'Notifications enabled'}
+            </p>
+          ) : notifPermission === 'denied' ? (
+            <p style={{ fontSize: 13, color: 'var(--color-danger)' }}>
+              {settings.language === 'zh' ? '通知已被封鎖，請在瀏覽器設定中允許' : 'Blocked — allow in browser settings'}
+            </p>
+          ) : (
+            <button
+              className="btn-export"
+              onClick={async () => {
+                const perm = await requestNotificationPermission()
+                setNotifPermission(perm)
+              }}
+            >
+              <Bell size={15} /> {settings.language === 'zh' ? '允許通知' : 'Enable Notifications'}
+            </button>
           )}
         </div>
 

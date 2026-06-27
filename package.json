@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@otplib/preset-browser": "^12.0.1",
+    "buffer": "^6.0.3",
     "crypto-js": "^4.2.0",
     "firebase": "^12.15.0",
     "lucide-react": "^1.21.0",
