@@ -53,7 +53,7 @@ function AppRouter() {
   // F-18: apply theme (including system preference tracking)
   useSystemTheme()
   // F-07: poll reminders and fire browser notifications
-  useReminderChecker()
+  useReminderChecker(user?.uid)
 
   // BUG-01 FIX: user===undefined means Firebase Auth hasn't resolved yet
   if (user === undefined) {

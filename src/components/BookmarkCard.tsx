@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, ExternalLink, Edit2, Trash2, Pin, PinOff } from 'lucide-react'
+import { Star, ExternalLink, Edit2, Trash2, Pin, PinOff, BookOpen, BookMarked } from 'lucide-react'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useAppStore } from '../stores/appStore'
 import { getDomain } from '../lib/urlMeta'
@@ -50,6 +50,16 @@ export default function BookmarkCard({ bookmark, onEdit }: Props) {
               : <Pin size={15} />}
           </button>
           <button
+            className="icon-btn"
+            onClick={() => update(bookmark.id, { isRead: !bookmark.isRead })}
+            aria-label={bookmark.isRead ? '標記未讀' : '標記已讀'}
+            title={bookmark.isRead ? '標記未讀' : '標記已讀'}
+          >
+            {bookmark.isRead
+              ? <BookMarked size={15} style={{ color: 'var(--color-primary)' }} />
+              : <BookOpen size={15} />}
+          </button>
+          <button
             className={`icon-btn star-btn ${bookmark.isFavourite ? 'starred' : ''}`}
             onClick={() => toggleFavourite(bookmark.id, bookmark.isFavourite)}
             aria-label={t('common', 'favourite')}
@@ -80,7 +90,7 @@ export default function BookmarkCard({ bookmark, onEdit }: Props) {
       </div>
 
       {/* Title */}
-      <h3 className="bookmark-title">{bookmark.title}</h3>
+      <h3 className="bookmark-title" style={{ opacity: bookmark.isRead ? 0.6 : 1 }}>{bookmark.title}</h3>
 
       {/* Description */}
       {bookmark.description && (

@@ -168,9 +168,17 @@ export default function MealPlannerPage() {
                       gap: 4,
                     }}>
                       {slots.map((slot, idx) => {
-                        const globalIdx = (plan?.days[day] || []).findIndex(
-                          (s, i) => s.type === mealType && (plan?.days[day] || []).filter((x, j) => x.type === mealType && j <= i).length === idx + 1
-                        )
+                        // BUG-39 FIX: Calculate global index by counting how many
+                        // slots of this mealType appear before position idx
+                        // among ALL day slots (not just filtered ones).
+                        let count = 0
+                        const globalIdx = (plan?.days[day] || []).findIndex((s) => {
+                          if (s.type === mealType) {
+                            if (count === idx) return true
+                            count++
+                          }
+                          return false
+                        })
                         return (
                           <div key={idx} style={{
                             background: 'var(--color-recipe-light)',

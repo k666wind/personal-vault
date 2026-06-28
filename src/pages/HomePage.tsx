@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Star, Bell, Settings, X, Sun, Moon, Plus } from 'lucide-react'
+import { Search, Star, Bell, Settings, X, Sun, Moon, Plus, Link, FileText, ChevronUp } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useNoteStore } from '../stores/noteStore'
@@ -11,9 +11,14 @@ export default function HomePage() {
   const { t, user, settings, setLanguage, setTheme } = useAppStore()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
+  const [showCapture, setShowCapture] = useState(false)
+  const [captureTitle, setCaptureTitle] = useState('')
+  const [captureUrl, setCaptureUrl] = useState('')
+  const [captureMode, setCaptureMode] = useState<'note' | 'bookmark'>('note')
 
-  const { bookmarks, init: initBm, teardown: tearBm } = useBookmarkStore()
-  const { notes, init: initNt, teardown: tearNt } = useNoteStore()
+  const { bookmarks, init: initBm, teardown: tearBm, add: addBookmark } = useBookmarkStore()
+
+  const { notes, init: initNt, teardown: tearNt, add: addNote } = useNoteStore()
   const { recipes, init: initRc, teardown: tearRc } = useRecipeStore()
   const { items: countdowns, subscribe: subCd, cleanup: cleanCd } = useCountdownStore()
 
@@ -129,6 +134,28 @@ export default function HomePage() {
     if (hours < 24) return settings.language === 'en' ? `${hours}h ago` : `${hours} 小時前`
     if (days < 7) return settings.language === 'en' ? `${days}d ago` : `${days} 日前`
     return new Date(ms).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+
+  const handleQuickCapture = async () => {
+    if (!user || !captureTitle.trim()) return
+    if (captureMode === 'note') {
+      await addNote(user.uid, { title: captureTitle.trim(), content: '', tags: [], isFavourite: false, isPinned: false })
+    } else {
+      if (!captureUrl.trim()) return
+      await addBookmark(user.uid, {
+        url: captureUrl.trim(),
+        title: captureTitle.trim(),
+        description: '',
+        favicon: '',
+        tags: [],
+        isFavourite: false,
+        isPinned: false,
+        isRead: false,
+      })
+    }
+    setCaptureTitle('')
+    setCaptureUrl('')
+    setShowCapture(false)
   }
 
   return (
@@ -255,6 +282,90 @@ export default function HomePage() {
           )}
         </>
       )}
+      {/* F-26: Quick Capture FAB */}
+      {showCapture && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: 16, right: 16, zIndex: 200,
+          background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 16,
+          border: '1px solid var(--color-border)',
+        }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={() => setCaptureMode('note')}
+              style={{
+                flex: 1, padding: '7px 0', borderRadius: 'var(--radius-md)',
+                fontWeight: 600, fontSize: 13,
+                background: captureMode === 'note' ? 'var(--color-primary)' : 'var(--color-bg)',
+                color: captureMode === 'note' ? '#fff' : 'var(--color-text-2)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <FileText size={13} style={{ display: 'inline', marginRight: 4 }} />
+              {settings.language === 'zh' ? '筆記' : 'Note'}
+            </button>
+            <button
+              onClick={() => setCaptureMode('bookmark')}
+              style={{
+                flex: 1, padding: '7px 0', borderRadius: 'var(--radius-md)',
+                fontWeight: 600, fontSize: 13,
+                background: captureMode === 'bookmark' ? 'var(--color-primary)' : 'var(--color-bg)',
+                color: captureMode === 'bookmark' ? '#fff' : 'var(--color-text-2)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              <Link size={13} style={{ display: 'inline', marginRight: 4 }} />
+              {settings.language === 'zh' ? '書籤' : 'Bookmark'}
+            </button>
+          </div>
+          <input
+            type="text"
+            placeholder={settings.language === 'zh' ? '標題' : 'Title'}
+            value={captureTitle}
+            onChange={(e) => setCaptureTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !captureUrl && handleQuickCapture()}
+            style={{
+              width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-border)', background: 'var(--color-bg)',
+              color: 'var(--color-text)', fontSize: 14, boxSizing: 'border-box', marginBottom: 8,
+            }}
+            autoFocus
+          />
+          {captureMode === 'bookmark' && (
+            <input
+              type="url"
+              placeholder="https://"
+              value={captureUrl}
+              onChange={(e) => setCaptureUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleQuickCapture()}
+              style={{
+                width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)', background: 'var(--color-bg)',
+                color: 'var(--color-text)', fontSize: 14, boxSizing: 'border-box', marginBottom: 8,
+              }}
+            />
+          )}
+          <button
+            onClick={handleQuickCapture}
+            disabled={!captureTitle.trim() || (captureMode === 'bookmark' && !captureUrl.trim())}
+            style={{
+              width: '100%', padding: '10px 0', borderRadius: 'var(--radius-md)',
+              background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 14,
+              opacity: (!captureTitle.trim() || (captureMode === 'bookmark' && !captureUrl.trim())) ? 0.5 : 1,
+            }}
+          >
+            {settings.language === 'zh' ? '快速儲存' : 'Save'}
+          </button>
+        </div>
+      )}
+      <button
+        className="fab"
+        onClick={() => setShowCapture(!showCapture)}
+        aria-label={settings.language === 'zh' ? '快速新增' : 'Quick Capture'}
+        style={{ zIndex: 201 }}
+      >
+        {showCapture ? <ChevronUp size={24} /> : <Plus size={24} />}
+      </button>
     </div>
   )
 }

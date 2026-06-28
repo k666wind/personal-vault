@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, BookOpen } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import BookmarkCard from '../components/BookmarkCard'
@@ -9,7 +9,7 @@ import BulkActionBar from '../components/BulkActionBar'
 import type { Bookmark } from '../types'
 
 export default function BookmarksPage() {
-  const { t, user } = useAppStore()
+  const { t, user, settings } = useAppStore()
   const { bookmarks, loading, error, init, teardown, update, remove } = useBookmarkStore()
   const navigate = useNavigate()
 
@@ -18,6 +18,7 @@ export default function BookmarksPage() {
   const [search, setSearch] = useState('')
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [showFavOnly, setShowFavOnly] = useState(false)
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -25,6 +26,8 @@ export default function BookmarksPage() {
     if (user) init(user.uid)
     return () => teardown()
   }, [user?.uid])
+
+  const unreadCount = useMemo(() => bookmarks.filter((b) => !b.isRead).length, [bookmarks])
 
   const allTags = useMemo(() => {
     const set = new Set<string>()
@@ -35,6 +38,7 @@ export default function BookmarksPage() {
   const filtered = useMemo(() => {
     const f = bookmarks.filter((b) => {
       if (showFavOnly && !b.isFavourite) return false
+      if (showUnreadOnly && b.isRead) return false
       if (filterTag && !b.tags.includes(filterTag)) return false
       if (search) {
         const q = search.toLowerCase()
@@ -45,7 +49,7 @@ export default function BookmarksPage() {
     })
     // F-03: pinned items always appear first
     return [...f.filter((b) => b.isPinned), ...f.filter((b) => !b.isPinned)]
-  }, [bookmarks, search, filterTag, showFavOnly])
+  }, [bookmarks, search, filterTag, showFavOnly, showUnreadOnly])
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
@@ -165,6 +169,10 @@ export default function BookmarksPage() {
       <div className="filter-bar">
         <button className={`filter-chip ${showFavOnly ? 'active' : ''}`} onClick={() => setShowFavOnly(!showFavOnly)}>
           <Star size={13} fill={showFavOnly ? 'currentColor' : 'none'} />{t('common', 'favourites')}
+        </button>
+        <button className={`filter-chip ${showUnreadOnly ? 'active' : ''}`} onClick={() => setShowUnreadOnly(!showUnreadOnly)}>
+          <BookOpen size={13} />
+          {settings.language === 'zh' ? `未讀${unreadCount > 0 ? ` (${unreadCount})` : ''}` : `Unread${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
         </button>
         {allTags.map((tag) => (
           <button key={tag} className={`filter-chip ${filterTag === tag ? 'active' : ''}`}

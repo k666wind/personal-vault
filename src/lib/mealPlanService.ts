@@ -1,5 +1,5 @@
 import {
-  collection, doc, setDoc, getDoc, query, where,
+  collection, doc, setDoc, updateDoc, getDoc, query, where,
   orderBy, onSnapshot, serverTimestamp, Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -31,13 +31,19 @@ export async function getMealPlan(userId: string, weekStart: number): Promise<Me
 
 export async function saveMealPlan(userId: string, weekStart: number, days: MealPlan['days']): Promise<void> {
   const ref = doc(db, COL, docId(userId, weekStart))
-  await setDoc(ref, {
-    userId,
-    weekStart,
-    days,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }, { merge: true })
+  const snap = await getDoc(ref)
+  if (snap.exists()) {
+    // L-02 FIX: doc already exists — only update days + updatedAt, preserve createdAt
+    await updateDoc(ref, { days, updatedAt: serverTimestamp() })
+  } else {
+    await setDoc(ref, {
+      userId,
+      weekStart,
+      days,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  }
 }
 
 // Subscribe to recent meal plans for this user (last 8 weeks)

@@ -35,6 +35,24 @@ export interface ReminderItem {
   moduleType: 'note' | 'countdown'
 }
 
+// BUG-40 FIX: Prune fired keys older than 7 days to prevent localStorage bloat
+export function pruneOldFiredKeys() {
+  const prefix = 'vault-notif-fired:'
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const toDelete: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (key && key.startsWith(prefix)) {
+      // Key format: vault-notif-fired:{id}-{reminderAt}
+      // Extract reminderAt from the end
+      const parts = key.slice(prefix.length).split('-')
+      const ts = parseInt(parts[parts.length - 1], 10)
+      if (!isNaN(ts) && ts < cutoff) toDelete.push(key)
+    }
+  }
+  toDelete.forEach((k) => localStorage.removeItem(k))
+}
+
 export function checkAndFireReminders(items: ReminderItem[]) {
   if (Notification.permission !== 'granted') return
   const now = Date.now()
