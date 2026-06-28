@@ -54,7 +54,9 @@ export async function addPasswordEntry(
   userId: string,
   data: Omit<PasswordEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ) {
-  await addDoc(collection(db, COL), { ...data, userId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+  await addDoc(collection(db, COL), stripUndefined({
+    ...data, userId, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  } as Record<string, unknown>))
 }
 
 export async function updatePasswordEntry(id: string, data: Partial<Omit<PasswordEntry, 'id' | 'userId' | 'createdAt'>>) {

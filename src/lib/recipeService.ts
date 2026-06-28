@@ -30,6 +30,8 @@ function toRecipe(id: string, data: Record<string, unknown>): Recipe {
     nutrition: (data.nutrition as Recipe['nutrition']) || {},
     tags: (data.tags as string[]) || [],
     isFavourite: (data.isFavourite as boolean) || false,
+    isPinned: (data.isPinned as boolean) || false,   // BUG-FIX: was missing, pin never reflected in UI
+    isPublic: (data.isPublic as boolean) || false,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
     updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : Date.now(),
   }
@@ -56,7 +58,13 @@ export async function addRecipe(
   userId: string,
   data: Omit<Recipe, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ) {
-  await addDoc(collection(db, COL), { ...data, userId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+  // BUG-FIX: strip undefined fields (e.g. difficulty='全部'/undefined) before writing to Firestore
+  await addDoc(collection(db, COL), {
+    ...stripUndefined(data as unknown as Record<string, unknown>),
+    userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
 }
 
 export async function updateRecipe(id: string, data: Partial<Omit<Recipe, 'id' | 'userId' | 'createdAt'>>) {
