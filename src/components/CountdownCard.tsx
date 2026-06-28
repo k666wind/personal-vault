@@ -1,6 +1,8 @@
-import { Star, Bell, Pencil, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { Star, Bell, Pencil, Trash2, Pin, PinOff } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useCountdownStore } from '../stores/countdownStore'
+import ConfirmDialog from './ConfirmDialog'
 import type { DateCountdown } from '../types'
 
 interface Props {
@@ -17,11 +19,9 @@ function getDayDiff(targetMs: number): number {
 }
 
 export default function CountdownCard({ item, onEdit }: Props) {
-  // BUG-31 FIX: read settings.language directly instead of using the fragile
-  // t('nav','home')==='Home' hack to infer the locale. The hack breaks whenever
-  // a translation key is renamed or a new language is added.
   const { t, settings } = useAppStore()
   const { update, remove } = useCountdownStore()
+  const [showConfirm, setShowConfirm] = useState(false)
   const diff = getDayDiff(item.targetDate)
 
   const isPast = diff < 0
@@ -36,11 +36,9 @@ export default function CountdownCard({ item, onEdit }: Props) {
     ? 'var(--color-success)'
     : 'var(--color-primary)'
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm(t('common', 'confirmDelete'))) {
-      await remove(item.id)
-    }
+    setShowConfirm(true)
   }
 
   const handleFav = async (e: React.MouseEvent) => {
@@ -49,6 +47,7 @@ export default function CountdownCard({ item, onEdit }: Props) {
   }
 
   return (
+  <>
     <div className="card countdown-card" style={{ borderLeft: `4px solid ${accentColor}` }}>
       <div className="card-main">
         <div className="countdown-left">
@@ -65,7 +64,10 @@ export default function CountdownCard({ item, onEdit }: Props) {
         </div>
 
         <div className="countdown-body">
-          <p className="card-title">{item.title}</p>
+          <p className="card-title">
+            {item.isPinned && <Pin size={11} style={{ color: 'var(--color-primary)', marginRight: 4, display: 'inline', verticalAlign: 'middle' }} />}
+            {item.title}
+          </p>
           <p className="countdown-date">
             {new Date(item.targetDate).toLocaleDateString(locale, {
               year: 'numeric', month: 'long', day: 'numeric',
@@ -96,6 +98,13 @@ export default function CountdownCard({ item, onEdit }: Props) {
           <Star size={16} fill={item.isFavourite ? 'currentColor' : 'none'}
             style={{ color: item.isFavourite ? '#f59e0b' : undefined }} />
         </button>
+        <button
+          className={`icon-btn ${item.isPinned ? 'pinned-btn' : ''}`}
+          onClick={(e) => { e.stopPropagation(); update(item.id, { isPinned: !item.isPinned }) }}
+          title={item.isPinned ? t('common', 'unpin') : t('common', 'pin')}
+        >
+          {item.isPinned ? <PinOff size={15} style={{ color: 'var(--color-primary)' }} /> : <Pin size={15} />}
+        </button>
         <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onEdit(item) }}>
           <Pencil size={15} />
         </button>
@@ -104,5 +113,13 @@ export default function CountdownCard({ item, onEdit }: Props) {
         </button>
       </div>
     </div>
+    {showConfirm && (
+      <ConfirmDialog
+        message={t('common', 'confirmDelete')}
+        onConfirm={() => { setShowConfirm(false); remove(item.id) }}
+        onCancel={() => setShowConfirm(false)}
+      />
+    )}
+  </>
   )
 }

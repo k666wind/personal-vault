@@ -8,6 +8,7 @@ import RecipeModal from '../components/RecipeModal'
 import RecipeDetailModal from '../components/RecipeDetailModal'
 import RecipeShareModal from '../components/RecipeShareModal'
 import BulkActionBar from '../components/BulkActionBar'
+import ConfirmDialog from '../components/ConfirmDialog'
 import type { Recipe } from '../types'
 
 export default function RecipesPage() {
@@ -25,6 +26,7 @@ export default function RecipesPage() {
   const [ingredientSearch, setIngredientSearch] = useState('')
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
   useEffect(() => {
     if (user) init(user.uid)
@@ -64,11 +66,13 @@ export default function RecipesPage() {
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(t('bulk', 'confirmDelete'))) return
-    await Promise.all([...selected].map((id) => remove(id)))
-    setSelected(new Set()); setBulkMode(false)
+    try {
+      await Promise.all([...selected].map((id) => remove(id)))
+      setSelected(new Set()); setBulkMode(false)
+    } catch {
+      alert(t('error', 'saveFailed'))
+    }
   }
-
   const handleBulkAddTag = async (tag: string) => {
     await Promise.all([...selected].map((id) => {
       const item = recipes.find((r) => r.id === id)
@@ -161,7 +165,7 @@ export default function RecipesPage() {
           selectedCount={selected.size} totalCount={filtered.length}
           onSelectAll={() => setSelected(new Set(filtered.map((r) => r.id)))}
           onDeselectAll={() => setSelected(new Set())}
-          onDelete={handleBulkDelete} onAddTag={handleBulkAddTag}
+          onDelete={() => setShowBulkConfirm(true)} onAddTag={handleBulkAddTag}
           onCancel={() => { setBulkMode(false); setSelected(new Set()) }}
           allTags={allTags}
         />
@@ -212,6 +216,13 @@ export default function RecipesPage() {
       )}
       {shareTarget && (
         <RecipeShareModal recipe={shareTarget} onClose={() => setShareTarget(undefined)} />
+      )}
+      {showBulkConfirm && (
+        <ConfirmDialog
+          message={t('bulk', 'confirmDelete')}
+          onConfirm={() => { setShowBulkConfirm(false); handleBulkDelete() }}
+          onCancel={() => setShowBulkConfirm(false)}
+        />
       )}
     </div>
   )

@@ -7,6 +7,7 @@ import { useNoteStore } from '../stores/noteStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import { usePasswordStore } from '../stores/passwordStore'
 import { useCountdownStore } from '../stores/countdownStore'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 interface TagInfo {
   tag: string
@@ -28,6 +29,7 @@ export default function TagManagerPage() {
   const [mergingTag, setMergingTag] = useState<string | null>(null)
   const [mergeTarget, setMergeTarget] = useState('')
   const [busy, setBusy] = useState(false)
+  const [pendingDeleteTag, setPendingDeleteTag] = useState<string | null>(null)
 
   // BUG-06 FIX: initialise all stores so tags are available when navigating
   // directly to /tags (e.g. from BottomNav or browser history) without having
@@ -119,7 +121,6 @@ export default function TagManagerPage() {
 
   // Delete tag from all items
   const handleDelete = async (tag: string) => {
-    if (!confirm(t('tagManager', 'confirmDelete'))) return
     setBusy(true)
     try {
       const removeTag = (tags: string[]) => tags.filter((tg) => tg !== tag)
@@ -199,7 +200,7 @@ export default function TagManagerPage() {
                       <Merge size={14} />
                     </button>
                     <button className="icon-btn" title={t('tagManager', 'delete')}
-                      onClick={() => handleDelete(info.tag)}>
+                      onClick={() => setPendingDeleteTag(info.tag)}>
                       <Trash2 size={14} style={{ color: 'var(--color-error)' }} />
                     </button>
                   </>
@@ -235,6 +236,13 @@ export default function TagManagerPage() {
             </div>
           ))}
         </div>
+      )}
+      {pendingDeleteTag && (
+        <ConfirmDialog
+          message={t('tagManager', 'confirmDelete')}
+          onConfirm={() => { handleDelete(pendingDeleteTag); setPendingDeleteTag(null) }}
+          onCancel={() => setPendingDeleteTag(null)}
+        />
       )}
     </div>
   )

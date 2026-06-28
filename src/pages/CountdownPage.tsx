@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Search, Star, Tag, X, CheckSquare } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, CheckSquare, Pin } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAppStore } from '../stores/appStore'
 import { useCountdownStore } from '../stores/countdownStore'
 import CountdownCard from '../components/CountdownCard'
 import CountdownModal from '../components/CountdownModal'
 import BulkActionBar from '../components/BulkActionBar'
+import ConfirmDialog from '../components/ConfirmDialog'
 import type { DateCountdown } from '../types'
 
 export default function CountdownPage() {
@@ -18,8 +19,10 @@ export default function CountdownPage() {
   const [search, setSearch] = useState('')
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [showFavOnly, setShowFavOnly] = useState(false)
+  const [showPinOnly, setShowPinOnly] = useState(false)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
   useEffect(() => {
     if (user) subscribe(user.uid)
@@ -35,6 +38,7 @@ export default function CountdownPage() {
   const filtered = useMemo(() => {
     return items.filter((i) => {
       if (showFavOnly && !i.isFavourite) return false
+      if (showPinOnly && !i.isPinned) return false
       if (filterTag && !i.tags.includes(filterTag)) return false
       if (search) {
         const q = search.toLowerCase()
@@ -43,14 +47,16 @@ export default function CountdownPage() {
       }
       return true
     })
-  }, [items, search, filterTag, showFavOnly])
+  }, [items, search, filterTag, showFavOnly, showPinOnly])
 
   const sorted = useMemo(() => {
     const today = new Date(); today.setHours(0,0,0,0)
     const todayMs = today.getTime()
     const upcoming = filtered.filter((i) => i.targetDate >= todayMs).sort((a, b) => a.targetDate - b.targetDate)
     const past = filtered.filter((i) => i.targetDate < todayMs).sort((a, b) => b.targetDate - a.targetDate)
-    return [...upcoming, ...past]
+    const all = [...upcoming, ...past]
+    // F-03: pinned items always appear first
+    return [...all.filter((i) => i.isPinned), ...all.filter((i) => !i.isPinned)]
   }, [filtered])
 
   const toggleSelect = (id: string) => {
@@ -58,9 +64,12 @@ export default function CountdownPage() {
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(t('bulk', 'confirmDelete'))) return
-    await Promise.all([...selected].map((id) => remove(id)))
-    setSelected(new Set()); setBulkMode(false)
+    try {
+      await Promise.all([...selected].map((id) => remove(id)))
+      setSelected(new Set()); setBulkMode(false)
+    } catch {
+      alert(t('error', 'saveFailed'))
+    }
   }
 
   const handleBulkAddTag = async (tag: string) => {
@@ -71,14 +80,12 @@ export default function CountdownPage() {
     }))
   }
 
-
   // PWA Shortcut: ?action=add auto-opens add modal
   const [searchParams] = useSearchParams()
+  const actionParam = searchParams.get('action')
   useEffect(() => {
-    if (searchParams.get('action') === 'add') {
-      setShowModal(true)
-    }
-  }, [searchParams])
+    if (actionParam === 'add') setShowModal(true)
+  }, [actionParam])
 
   const openAdd = () => { setEditTarget(undefined); setShowModal(true) }
   const openEdit = (i: DateCountdown) => {
@@ -140,7 +147,7 @@ export default function CountdownPage() {
           selectedCount={selected.size} totalCount={sorted.length}
           onSelectAll={() => setSelected(new Set(sorted.map((i) => i.id)))}
           onDeselectAll={() => setSelected(new Set())}
-          onDelete={handleBulkDelete} onAddTag={handleBulkAddTag}
+          onDelete={() => setShowBulkConfirm(true)} onAddTag={handleBulkAddTag}
           onCancel={() => { setBulkMode(false); setSelected(new Set()) }}
           allTags={allTags}
         />
@@ -156,6 +163,9 @@ export default function CountdownPage() {
       <div className="filter-bar">
         <button className={`filter-chip ${showFavOnly ? 'active' : ''}`} onClick={() => setShowFavOnly(!showFavOnly)}>
           <Star size={13} fill={showFavOnly ? 'currentColor' : 'none'} />{t('common', 'favourites')}
+        </button>
+        <button className={`filter-chip ${showPinOnly ? 'active' : ''}`} onClick={() => setShowPinOnly(!showPinOnly)}>
+          <Pin size={13} />{t('common', 'pinned')}
         </button>
         {allTags.map((tag) => (
           <button key={tag} className={`filter-chip ${filterTag === tag ? 'active' : ''}`}
@@ -173,6 +183,13 @@ export default function CountdownPage() {
 
       {showModal && (
         <CountdownModal item={editTarget} onClose={() => setShowModal(false)} allTags={allTags} />
+      )}
+      {showBulkConfirm && (
+        <ConfirmDialog
+          message={t('bulk', 'confirmDelete')}
+          onConfirm={() => { setShowBulkConfirm(false); handleBulkDelete() }}
+          onCancel={() => setShowBulkConfirm(false)}
+        />
       )}
     </div>
   )

@@ -8,6 +8,7 @@ import PasswordModal from '../components/PasswordModal'
 import PasswordLockScreen from '../components/PasswordLockScreen'
 import ChangeMasterPasswordModal from '../components/ChangeMasterPasswordModal'
 import BulkActionBar from '../components/BulkActionBar'
+import ConfirmDialog from '../components/ConfirmDialog'
 import type { PasswordEntry } from '../types'
 
 export default function PasswordsPage() {
@@ -23,6 +24,7 @@ export default function PasswordsPage() {
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
   useEffect(() => {
     if (user) init(user.uid)
@@ -61,9 +63,12 @@ export default function PasswordsPage() {
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(t('bulk', 'confirmDelete'))) return
-    await Promise.all([...selected].map((id) => remove(id)))
-    setSelected(new Set()); setBulkMode(false)
+    try {
+      await Promise.all([...selected].map((id) => remove(id)))
+      setSelected(new Set()); setBulkMode(false)
+    } catch {
+      alert(t('error', 'saveFailed'))
+    }
   }
 
   const handleBulkAddTag = async (tag: string) => {
@@ -156,7 +161,7 @@ export default function PasswordsPage() {
           selectedCount={selected.size} totalCount={filtered.length}
           onSelectAll={() => setSelected(new Set(filtered.map((e) => e.id)))}
           onDeselectAll={() => setSelected(new Set())}
-          onDelete={handleBulkDelete} onAddTag={handleBulkAddTag}
+          onDelete={() => setShowBulkConfirm(true)} onAddTag={handleBulkAddTag}
           onCancel={() => { setBulkMode(false); setSelected(new Set()) }}
           allTags={allTags}
         />
@@ -187,6 +192,13 @@ export default function PasswordsPage() {
 
       {showModal && <PasswordModal entry={editTarget} onClose={() => setShowModal(false)} allTags={allTags} />}
       {showChangePw && <ChangeMasterPasswordModal onClose={() => setShowChangePw(false)} />}
+      {showBulkConfirm && (
+        <ConfirmDialog
+          message={t('bulk', 'confirmDelete')}
+          onConfirm={() => { setShowBulkConfirm(false); handleBulkDelete() }}
+          onCancel={() => setShowBulkConfirm(false)}
+        />
+      )}
     </div>
   )
 }

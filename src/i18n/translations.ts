@@ -57,6 +57,8 @@ export const translations = {
       description: '描述',
       pin: '置頂',
       unpin: '取消置頂',
+      confirm: '確認',
+      pinned: '置頂',
     },
     home: {
       title: '主頁',
@@ -322,6 +324,8 @@ export const translations = {
       description: 'Description',
       pin: 'Pin',
       unpin: 'Unpin',
+      confirm: 'Confirm',
+      pinned: 'Pinned',
     },
     home: {
       title: 'Home',

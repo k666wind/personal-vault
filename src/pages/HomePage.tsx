@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Star, Bell, Settings, X, Sun, Moon, Plus, Link, FileText, ChevronUp } from 'lucide-react'
+import { Search, Star, Bell, Settings, X, Sun, Moon, Plus, Link, FileText, ChevronUp, Pin } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useNoteStore } from '../stores/noteStore'
@@ -111,6 +111,16 @@ export default function HomePage() {
     return all.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6)
   }, [bookmarks, notes, recipes, countdowns])
 
+  // Pinned countdowns — sorted upcoming first, past last
+  const pinnedCountdowns = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const todayMs = today.getTime()
+    const pinned = countdowns.filter(c => c.isPinned)
+    const upcoming = pinned.filter(c => c.targetDate >= todayMs).sort((a, b) => a.targetDate - b.targetDate)
+    const past = pinned.filter(c => c.targetDate < todayMs).sort((a, b) => b.targetDate - a.targetDate)
+    return [...upcoming, ...past].slice(0, 5)
+  }, [countdowns])
+
   // Format reminder date with year
   const formatReminder = (ms: number) => {
     const d = new Date(ms)
@@ -134,6 +144,14 @@ export default function HomePage() {
     if (hours < 24) return settings.language === 'en' ? `${hours}h ago` : `${hours} 小時前`
     if (days < 7) return settings.language === 'en' ? `${days}d ago` : `${days} 日前`
     return new Date(ms).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+
+  const formatCountdownDiff = (targetMs: number) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const diff = Math.round((targetMs - today.getTime()) / 86400000)
+    if (diff === 0) return settings.language === 'en' ? 'Today' : '今日'
+    if (diff > 0) return settings.language === 'en' ? `${diff}d left` : `還有 ${diff} 日`
+    return settings.language === 'en' ? `${Math.abs(diff)}d ago` : `已過 ${Math.abs(diff)} 日`
   }
 
   const handleQuickCapture = async () => {
@@ -238,6 +256,38 @@ export default function HomePage() {
               </div>
             )}
           </section>
+
+          {/* Pinned Countdowns */}
+          {pinnedCountdowns.length > 0 && (
+            <section className="home-section">
+              <div className="section-header">
+                <Pin size={14} style={{ color: 'var(--color-primary)' }} />
+                <h2>{settings.language === 'zh' ? '置頂日子' : 'Pinned Dates'}</h2>
+                <button className="section-add-btn" onClick={() => navigate('/countdown')}>
+                  <Plus size={13} />
+                </button>
+              </div>
+              <div className="reminder-list">
+                {pinnedCountdowns.map((c) => {
+                  const today = new Date(); today.setHours(0, 0, 0, 0)
+                  const isPast = c.targetDate < today.getTime()
+                  const isToday = c.targetDate === today.getTime()
+                  return (
+                    <button key={c.id} className="reminder-item" onClick={() => navigate('/countdown')}>
+                      <Pin size={13} style={{ color: isPast ? 'var(--color-text-3)' : 'var(--color-primary)', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                        <p className="reminder-item-title">{c.title}</p>
+                        <p className="reminder-item-time" style={{ color: isToday ? 'var(--color-success)' : isPast ? 'var(--color-text-3)' : 'var(--color-primary)' }}>
+                          {new Date(c.targetDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}
+                          {' · '}{formatCountdownDiff(c.targetDate)}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          )}
 
           {/* Favourites */}
           <section className="home-section">

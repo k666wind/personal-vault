@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, BookOpen } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, BookOpen, Pin } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import BookmarkCard from '../components/BookmarkCard'
 import BookmarkModal from '../components/BookmarkModal'
 import BulkActionBar from '../components/BulkActionBar'
+import ConfirmDialog from '../components/ConfirmDialog'
 import type { Bookmark } from '../types'
 
 export default function BookmarksPage() {
@@ -18,9 +19,11 @@ export default function BookmarksPage() {
   const [search, setSearch] = useState('')
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [showFavOnly, setShowFavOnly] = useState(false)
+  const [showPinOnly, setShowPinOnly] = useState(false)
   const [showUnreadOnly, setShowUnreadOnly] = useState(false)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
   useEffect(() => {
     if (user) init(user.uid)
@@ -38,6 +41,7 @@ export default function BookmarksPage() {
   const filtered = useMemo(() => {
     const f = bookmarks.filter((b) => {
       if (showFavOnly && !b.isFavourite) return false
+      if (showPinOnly && !b.isPinned) return false
       if (showUnreadOnly && b.isRead) return false
       if (filterTag && !b.tags.includes(filterTag)) return false
       if (search) {
@@ -49,17 +53,20 @@ export default function BookmarksPage() {
     })
     // F-03: pinned items always appear first
     return [...f.filter((b) => b.isPinned), ...f.filter((b) => !b.isPinned)]
-  }, [bookmarks, search, filterTag, showFavOnly, showUnreadOnly])
+  }, [bookmarks, search, filterTag, showFavOnly, showPinOnly, showUnreadOnly])
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(t('bulk', 'confirmDelete'))) return
-    await Promise.all([...selected].map((id) => remove(id)))
-    setSelected(new Set())
-    setBulkMode(false)
+    try {
+      await Promise.all([...selected].map((id) => remove(id)))
+      setSelected(new Set())
+      setBulkMode(false)
+    } catch {
+      alert(t('error', 'saveFailed'))
+    }
   }
 
   const handleBulkAddTag = async (tag: string) => {
@@ -72,14 +79,12 @@ export default function BookmarksPage() {
     )
   }
 
-
   // PWA Shortcut: ?action=add auto-opens add modal
   const [searchParams] = useSearchParams()
+  const actionParam = searchParams.get('action')
   useEffect(() => {
-    if (searchParams.get('action') === 'add') {
-      setShowModal(true)
-    }
-  }, [searchParams])
+    if (actionParam === 'add') setShowModal(true)
+  }, [actionParam])
 
   const openAdd = () => { setEditTarget(undefined); setShowModal(true) }
   const openEdit = (b: Bookmark) => {
@@ -152,7 +157,7 @@ export default function BookmarksPage() {
           totalCount={filtered.length}
           onSelectAll={() => setSelected(new Set(filtered.map((b) => b.id)))}
           onDeselectAll={() => setSelected(new Set())}
-          onDelete={handleBulkDelete}
+          onDelete={() => setShowBulkConfirm(true)}
           onAddTag={handleBulkAddTag}
           onCancel={() => { setBulkMode(false); setSelected(new Set()) }}
           allTags={allTags}
@@ -169,6 +174,9 @@ export default function BookmarksPage() {
       <div className="filter-bar">
         <button className={`filter-chip ${showFavOnly ? 'active' : ''}`} onClick={() => setShowFavOnly(!showFavOnly)}>
           <Star size={13} fill={showFavOnly ? 'currentColor' : 'none'} />{t('common', 'favourites')}
+        </button>
+        <button className={`filter-chip ${showPinOnly ? 'active' : ''}`} onClick={() => setShowPinOnly(!showPinOnly)}>
+          <Pin size={13} />{t('common', 'pinned')}
         </button>
         <button className={`filter-chip ${showUnreadOnly ? 'active' : ''}`} onClick={() => setShowUnreadOnly(!showUnreadOnly)}>
           <BookOpen size={13} />
@@ -190,6 +198,13 @@ export default function BookmarksPage() {
 
       {showModal && (
         <BookmarkModal bookmark={editTarget} onClose={() => setShowModal(false)} allTags={allTags} />
+      )}
+      {showBulkConfirm && (
+        <ConfirmDialog
+          message={t('bulk', 'confirmDelete')}
+          onConfirm={() => { setShowBulkConfirm(false); handleBulkDelete() }}
+          onCancel={() => setShowBulkConfirm(false)}
+        />
       )}
     </div>
   )

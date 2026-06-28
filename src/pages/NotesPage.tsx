@@ -6,6 +6,7 @@ import { useNoteStore } from '../stores/noteStore'
 import NoteCard from '../components/NoteCard'
 import NoteModal from '../components/NoteModal'
 import BulkActionBar from '../components/BulkActionBar'
+import ConfirmDialog from '../components/ConfirmDialog'
 import type { Note } from '../types'
 
 export default function NotesPage() {
@@ -20,6 +21,7 @@ export default function NotesPage() {
   const [showFavOnly, setShowFavOnly] = useState(false)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
   useEffect(() => {
     if (user) init(user.uid)
@@ -52,9 +54,12 @@ export default function NotesPage() {
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(t('bulk', 'confirmDelete'))) return
-    await Promise.all([...selected].map((id) => remove(id)))
-    setSelected(new Set()); setBulkMode(false)
+    try {
+      await Promise.all([...selected].map((id) => remove(id)))
+      setSelected(new Set()); setBulkMode(false)
+    } catch {
+      alert(t('error', 'saveFailed'))
+    }
   }
 
   const handleBulkAddTag = async (tag: string) => {
@@ -65,14 +70,12 @@ export default function NotesPage() {
     }))
   }
 
-
   // PWA Shortcut: ?action=add auto-opens add modal
   const [searchParams] = useSearchParams()
+  const actionParam = searchParams.get('action')
   useEffect(() => {
-    if (searchParams.get('action') === 'add') {
-      setShowModal(true)
-    }
-  }, [searchParams])
+    if (actionParam === 'add') setShowModal(true)
+  }, [actionParam])
 
   const openAdd = () => { setEditTarget(undefined); setShowModal(true) }
   const openEdit = (n: Note) => {
@@ -144,7 +147,7 @@ export default function NotesPage() {
           selectedCount={selected.size} totalCount={filtered.length}
           onSelectAll={() => setSelected(new Set(filtered.map((n) => n.id)))}
           onDeselectAll={() => setSelected(new Set())}
-          onDelete={handleBulkDelete} onAddTag={handleBulkAddTag}
+          onDelete={() => setShowBulkConfirm(true)} onAddTag={handleBulkAddTag}
           onCancel={() => { setBulkMode(false); setSelected(new Set()) }}
           allTags={allTags}
         />
@@ -181,6 +184,13 @@ export default function NotesPage() {
           onClose={() => setShowModal(false)}
           allTags={allTags}
           onSearchNote={(title) => { setShowModal(false); setSearch(title) }}
+        />
+      )}
+      {showBulkConfirm && (
+        <ConfirmDialog
+          message={t('bulk', 'confirmDelete')}
+          onConfirm={() => { setShowBulkConfirm(false); handleBulkDelete() }}
+          onCancel={() => setShowBulkConfirm(false)}
         />
       )}
     </div>
