@@ -26,6 +26,9 @@ function toBookmark(id: string, data: Record<string, unknown>): Bookmark {
     favicon: (data.favicon as string) || '',
     tags: (data.tags as string[]) || [],
     isFavourite: (data.isFavourite as boolean) || false,
+    isPinned: (data.isPinned as boolean) || false,
+    isRead: (data.isRead as boolean) || false,
+    readAt: data.readAt as number | undefined,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
     updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : Date.now(),
   }

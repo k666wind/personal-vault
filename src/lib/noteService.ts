@@ -33,6 +33,7 @@ function toNote(id: string, data: Record<string, unknown>): Note {
     content: data.content as string,
     tags: (data.tags as string[]) || [],
     isFavourite: (data.isFavourite as boolean) || false,
+    isPinned: (data.isPinned as boolean) || false,
     reminderAt: data.reminderAt as number | undefined,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
     updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : Date.now(),
