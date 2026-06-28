@@ -3,6 +3,7 @@ import { Star, ExternalLink, Edit2, Trash2, Pin, PinOff, BookOpen, BookMarked } 
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useAppStore } from '../stores/appStore'
 import { getDomain } from '../lib/urlMeta'
+import ConfirmDialog from './ConfirmDialog'
 import type { Bookmark } from '../types'
 
 interface Props {
@@ -13,14 +14,10 @@ interface Props {
 export default function BookmarkCard({ bookmark, onEdit }: Props) {
   const { toggleFavourite, remove, update } = useBookmarkStore()
   const { t } = useAppStore()
-  const [confirmDelete, setConfirmDelete] = useState(false)
-
-  const handleDelete = async () => {
-    if (!confirmDelete) { setConfirmDelete(true); return }
-    await remove(bookmark.id)
-  }
+  const [showConfirm, setShowConfirm] = useState(false)
 
   return (
+    <>
     <div className="card bookmark-card">
       <div className="bookmark-card-top">
         {/* Favicon + domain */}
@@ -79,9 +76,8 @@ export default function BookmarkCard({ bookmark, onEdit }: Props) {
             <Edit2 size={17} />
           </button>
           <button
-            className={`icon-btn ${confirmDelete ? 'danger-btn' : ''}`}
-            onClick={handleDelete}
-            onBlur={() => setConfirmDelete(false)}
+            className="icon-btn"
+            onClick={() => setShowConfirm(true)}
             aria-label={t('common', 'delete')}
           >
             <Trash2 size={17} />
@@ -106,5 +102,13 @@ export default function BookmarkCard({ bookmark, onEdit }: Props) {
         </div>
       )}
     </div>
+    {showConfirm && (
+      <ConfirmDialog
+        message={t('common', 'confirmDelete')}
+        onConfirm={() => { setShowConfirm(false); remove(bookmark.id) }}
+        onCancel={() => setShowConfirm(false)}
+      />
+    )}
+    </>
   )
 }

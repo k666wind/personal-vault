@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, ShoppingCart, CalendarDays } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, ShoppingCart, CalendarDays, Pin } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import RecipeCard from '../components/RecipeCard'
@@ -27,6 +27,7 @@ export default function RecipesPage() {
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+  const [showPinOnly, setShowPinOnly] = useState(false)
 
   useEffect(() => {
     if (user) init(user.uid)
@@ -40,8 +41,9 @@ export default function RecipesPage() {
   }, [recipes])
 
   const filtered = useMemo(() => {
-    return recipes.filter((r) => {
+    const f = recipes.filter((r) => {
       if (showFavOnly && !r.isFavourite) return false
+      if (showPinOnly && !r.isPinned) return false
       if (filterTag && !r.tags.includes(filterTag)) return false
       if (ingredientSearch) {
         const q = ingredientSearch.toLowerCase()
@@ -54,7 +56,9 @@ export default function RecipesPage() {
       }
       return true
     })
-  }, [recipes, search, filterTag, showFavOnly, ingredientSearch])
+    // F-03: pinned items always appear first
+    return [...f.filter((r) => r.isPinned), ...f.filter((r) => !r.isPinned)]
+  }, [recipes, search, filterTag, showFavOnly, showPinOnly, ingredientSearch])
 
   const shoppingCount = useMemo(() =>
     recipes.reduce((acc, r) => acc + r.ingredients.filter((i) => i.inShoppingList).length, 0),
@@ -188,6 +192,9 @@ export default function RecipesPage() {
       <div className="filter-bar">
         <button className={`filter-chip ${showFavOnly ? 'active' : ''}`} onClick={() => setShowFavOnly(!showFavOnly)}>
           <Star size={13} fill={showFavOnly ? 'currentColor' : 'none'} />{t('common', 'favourites')}
+        </button>
+        <button className={`filter-chip ${showPinOnly ? 'active' : ''}`} onClick={() => setShowPinOnly(!showPinOnly)}>
+          <Pin size={13} />{t('common', 'pinned')}
         </button>
         {allTags.map((tag) => (
           <button key={tag} className={`filter-chip ${filterTag === tag ? 'active' : ''}`}

@@ -3,6 +3,7 @@ import { Star, Eye, EyeOff, Copy, Edit2, Trash2, Pin, PinOff, ShieldCheck } from
 import { usePasswordStore } from '../stores/passwordStore'
 import { useAppStore } from '../stores/appStore'
 import TOTPDisplay from './TOTPDisplay'
+import ConfirmDialog from './ConfirmDialog'
 import type { PasswordEntry } from '../types'
 
 interface Props {
@@ -15,8 +16,7 @@ export default function PasswordCard({ entry, onEdit }: Props) {
   const { t } = useAppStore()
   const [showPw, setShowPw] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  // F-01: toggle TOTP section visibility
+  const [showConfirm, setShowConfirm] = useState(false)
   const [showTotp, setShowTotp] = useState(false)
 
   const decrypted = decryptPassword(entry.encryptedPassword)
@@ -33,16 +33,15 @@ export default function PasswordCard({ entry, onEdit }: Props) {
   const isExpired = entry.expiresAt && entry.expiresAt < Date.now()
 
   return (
+    <>
     <div className="card password-card" onClick={recordActivity}
       style={{ borderLeft: entry.isPinned ? '3px solid var(--color-primary)' : undefined }}>
       <div className="password-card-top">
         <div className="password-site-wrap">
-          {/* F-03: pinned indicator */}
           {entry.isPinned && <Pin size={11} style={{ color: 'var(--color-primary)', marginRight: 4, flexShrink: 0 }} />}
           <span className="password-site">{entry.site}</span>
           {isExpired && <span className="expire-chip expired">{t('password', 'expired')}</span>}
           {!isExpired && isExpiringSoon && <span className="expire-chip expiring">{t('password', 'expiringSoon')}</span>}
-          {/* F-01: TOTP badge */}
           {entry.totpSecret && (
             <button
               className="expire-chip"
@@ -59,7 +58,6 @@ export default function PasswordCard({ entry, onEdit }: Props) {
           )}
         </div>
         <div className="card-actions">
-          {/* F-03: pin button */}
           <button
             className="icon-btn"
             onClick={(e) => { e.stopPropagation(); updateFields(entry.id, { isPinned: !entry.isPinned }) }}
@@ -79,9 +77,8 @@ export default function PasswordCard({ entry, onEdit }: Props) {
             <Edit2 size={17} />
           </button>
           <button
-            className={`icon-btn ${confirmDelete ? 'danger-btn' : ''}`}
-            onClick={(e) => { e.stopPropagation(); if (!confirmDelete) { setConfirmDelete(true); return } remove(entry.id) }}
-            onBlur={() => setConfirmDelete(false)}
+            className="icon-btn"
+            onClick={(e) => { e.stopPropagation(); setShowConfirm(true) }}
           >
             <Trash2 size={17} />
           </button>
@@ -104,7 +101,6 @@ export default function PasswordCard({ entry, onEdit }: Props) {
         </div>
       </div>
 
-      {/* F-01: TOTP section */}
       {entry.totpSecret && showTotp && (
         <div style={{ marginTop: 8 }}>
           <TOTPDisplay secret={entry.totpSecret} onRecordActivity={recordActivity} />
@@ -119,5 +115,13 @@ export default function PasswordCard({ entry, onEdit }: Props) {
         </div>
       )}
     </div>
+    {showConfirm && (
+      <ConfirmDialog
+        message={t('common', 'confirmDelete')}
+        onConfirm={() => { setShowConfirm(false); remove(entry.id) }}
+        onCancel={() => setShowConfirm(false)}
+      />
+    )}
+    </>
   )
 }

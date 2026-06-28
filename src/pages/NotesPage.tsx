@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare } from 'lucide-react'
+import { Plus, Search, Star, Tag, X, RefreshCw, CheckSquare, Pin } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useNoteStore } from '../stores/noteStore'
 import NoteCard from '../components/NoteCard'
@@ -19,6 +19,7 @@ export default function NotesPage() {
   const [search, setSearch] = useState('')
   const [filterTag, setFilterTag] = useState<string | null>(null)
   const [showFavOnly, setShowFavOnly] = useState(false)
+  const [showPinOnly, setShowPinOnly] = useState(false)
   const [bulkMode, setBulkMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
@@ -37,6 +38,7 @@ export default function NotesPage() {
   const filtered = useMemo(() => {
     const f = notes.filter((n) => {
       if (showFavOnly && !n.isFavourite) return false
+      if (showPinOnly && !n.isPinned) return false
       if (filterTag && !n.tags.includes(filterTag)) return false
       if (search) {
         const q = search.toLowerCase()
@@ -47,7 +49,7 @@ export default function NotesPage() {
     })
     // F-03: pinned items always appear first
     return [...f.filter((n) => n.isPinned), ...f.filter((n) => !n.isPinned)]
-  }, [notes, search, filterTag, showFavOnly])
+  }, [notes, search, filterTag, showFavOnly, showPinOnly])
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
@@ -163,6 +165,9 @@ export default function NotesPage() {
       <div className="filter-bar">
         <button className={`filter-chip ${showFavOnly ? 'active' : ''}`} onClick={() => setShowFavOnly(!showFavOnly)}>
           <Star size={13} fill={showFavOnly ? 'currentColor' : 'none'} />{t('common', 'favourites')}
+        </button>
+        <button className={`filter-chip ${showPinOnly ? 'active' : ''}`} onClick={() => setShowPinOnly(!showPinOnly)}>
+          <Pin size={13} />{t('common', 'pinned')}
         </button>
         {allTags.map((tag) => (
           <button key={tag} className={`filter-chip ${filterTag === tag ? 'active' : ''}`}

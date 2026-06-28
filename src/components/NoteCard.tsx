@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Star, Edit2, Trash2, Bell, Pin, PinOff } from 'lucide-react'
 import { useNoteStore } from '../stores/noteStore'
-
+import { useAppStore } from '../stores/appStore'
+import ConfirmDialog from './ConfirmDialog'
 import type { Note } from '../types'
 
 interface Props {
@@ -11,7 +12,8 @@ interface Props {
 
 export default function NoteCard({ note, onEdit }: Props) {
   const { toggleFavourite, remove, update } = useNoteStore()
-    const [confirmDelete, setConfirmDelete] = useState(false)
+  const { t } = useAppStore()
+  const [showConfirm, setShowConfirm] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
   const isLong = note.content.length > 200
@@ -23,6 +25,7 @@ export default function NoteCard({ note, onEdit }: Props) {
   const reminderPast = hasReminder && note.reminderAt! < Date.now()
 
   return (
+    <>
     <div className="card note-card">
       <div className="note-card-top">
         <h3 className="note-title">
@@ -33,7 +36,7 @@ export default function NoteCard({ note, onEdit }: Props) {
           <button
             className={`icon-btn ${note.isPinned ? 'pinned-btn' : ''}`}
             onClick={() => update(note.id, { isPinned: !note.isPinned })}
-            title={note.isPinned ? 'Unpin' : 'Pin'}
+            title={note.isPinned ? t('common', 'unpin') : t('common', 'pin')}
           >
             {note.isPinned ? <PinOff size={15} style={{ color: 'var(--color-primary)' }} /> : <Pin size={15} />}
           </button>
@@ -47,9 +50,8 @@ export default function NoteCard({ note, onEdit }: Props) {
             <Edit2 size={17} />
           </button>
           <button
-            className={`icon-btn ${confirmDelete ? 'danger-btn' : ''}`}
-            onClick={() => { if (!confirmDelete) { setConfirmDelete(true); return } remove(note.id) }}
-            onBlur={() => setConfirmDelete(false)}
+            className="icon-btn"
+            onClick={() => setShowConfirm(true)}
           >
             <Trash2 size={17} />
           </button>
@@ -85,5 +87,13 @@ export default function NoteCard({ note, onEdit }: Props) {
         )}
       </div>
     </div>
+    {showConfirm && (
+      <ConfirmDialog
+        message={t('common', 'confirmDelete')}
+        onConfirm={() => { setShowConfirm(false); remove(note.id) }}
+        onCancel={() => setShowConfirm(false)}
+      />
+    )}
+    </>
   )
 }

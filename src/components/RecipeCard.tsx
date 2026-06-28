@@ -1,7 +1,8 @@
-import { Star, Clock, Users, Trash2, Share2 } from 'lucide-react'
+import { Star, Clock, Users, Trash2, Share2, Pin, PinOff } from 'lucide-react'
 import { useState } from 'react'
 import { useRecipeStore } from '../stores/recipeStore'
 import { useAppStore } from '../stores/appStore'
+import ConfirmDialog from './ConfirmDialog'
 import type { Recipe } from '../types'
 
 interface Props {
@@ -18,15 +19,29 @@ const difficultyColor: Record<string, string> = {
 }
 
 export default function RecipeCard({ recipe, onClick, onEdit, onShare }: Props) {
-  const { toggleFavourite, remove } = useRecipeStore()
+  const { toggleFavourite, remove, update } = useRecipeStore()
   const { t } = useAppStore()
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   return (
-    <div className="card recipe-card" onClick={onClick}>
+    <>
+    <div className="card recipe-card" onClick={onClick}
+      style={{ borderLeft: recipe.isPinned ? '3px solid var(--color-recipe)' : undefined }}>
       <div className="recipe-card-top">
-        <h3 className="recipe-title">{recipe.title}</h3>
+        <h3 className="recipe-title">
+          {recipe.isPinned && <Pin size={11} style={{ color: 'var(--color-recipe)', marginRight: 4, display: 'inline', verticalAlign: 'middle' }} />}
+          {recipe.title}
+        </h3>
         <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="icon-btn"
+            onClick={() => update(recipe.id, { isPinned: !recipe.isPinned })}
+            title={recipe.isPinned ? t('common', 'unpin') : t('common', 'pin')}
+          >
+            {recipe.isPinned
+              ? <PinOff size={14} style={{ color: 'var(--color-recipe)' }} />
+              : <Pin size={14} />}
+          </button>
           <button
             className={`icon-btn star-btn ${recipe.isFavourite ? 'starred' : ''}`}
             onClick={() => toggleFavourite(recipe.id, recipe.isFavourite)}
@@ -42,9 +57,8 @@ export default function RecipeCard({ recipe, onClick, onEdit, onShare }: Props) 
             ✏️
           </button>
           <button
-            className={`icon-btn ${confirmDelete ? 'danger-btn' : ''}`}
-            onClick={() => { if (!confirmDelete) { setConfirmDelete(true); return } remove(recipe.id) }}
-            onBlur={() => setConfirmDelete(false)}
+            className="icon-btn"
+            onClick={() => setShowConfirm(true)}
           >
             <Trash2 size={17} />
           </button>
@@ -84,5 +98,13 @@ export default function RecipeCard({ recipe, onClick, onEdit, onShare }: Props) 
         </div>
       )}
     </div>
+    {showConfirm && (
+      <ConfirmDialog
+        message={t('common', 'confirmDelete')}
+        onConfirm={() => { setShowConfirm(false); remove(recipe.id) }}
+        onCancel={() => setShowConfirm(false)}
+      />
+    )}
+    </>
   )
 }
