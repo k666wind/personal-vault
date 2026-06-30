@@ -53,6 +53,54 @@ export function pruneOldFiredKeys() {
   toDelete.forEach((k) => localStorage.removeItem(k))
 }
 
+
+// S6-D: Notification Inbox — log fired notifications to localStorage
+export interface NotificationLogEntry {
+  id: string
+  title: string
+  body: string
+  firedAt: number
+  moduleType: 'note' | 'countdown'
+  read: boolean
+}
+
+const LOG_KEY = 'vault-notif-log'
+const MAX_LOG = 50
+
+export function getNotificationLog(): NotificationLogEntry[] {
+  try {
+    return JSON.parse(localStorage.getItem(LOG_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+export function addNotificationLog(entry: Omit<NotificationLogEntry, 'read'>) {
+  const log = getNotificationLog()
+  const updated = [{ ...entry, read: false }, ...log].slice(0, MAX_LOG)
+  localStorage.setItem(LOG_KEY, JSON.stringify(updated))
+}
+
+export function markNotificationRead(id: string) {
+  const log = getNotificationLog()
+  const updated = log.map((e) => e.id === id ? { ...e, read: true } : e)
+  localStorage.setItem(LOG_KEY, JSON.stringify(updated))
+}
+
+export function markAllNotificationsRead() {
+  const log = getNotificationLog()
+  const updated = log.map((e) => ({ ...e, read: true }))
+  localStorage.setItem(LOG_KEY, JSON.stringify(updated))
+}
+
+export function clearNotificationLog() {
+  localStorage.removeItem(LOG_KEY)
+}
+
+export function getUnreadNotificationCount(): number {
+  return getNotificationLog().filter((e) => !e.read).length
+}
+
 export function checkAndFireReminders(items: ReminderItem[]) {
   if (Notification.permission !== 'granted') return
   const now = Date.now()
@@ -63,8 +111,11 @@ export function checkAndFireReminders(items: ReminderItem[]) {
     if (diff >= 0 && diff < 120_000) {
       const key = firedKey(`${item.id}-${item.reminderAt}`)
       if (localStorage.getItem(key)) continue // already fired
-      showNotification(item.title, item.moduleType === 'countdown' ? '⏰ 倒數提醒' : '📝 筆記提醒', item.id)
+      const body = item.moduleType === 'countdown' ? '⏰ 倒數提醒' : '📝 筆記提醒'
+      showNotification(item.title, body, item.id)
       localStorage.setItem(key, '1')
+      // S6-D: log to notification inbox
+      addNotificationLog({ id: `${item.id}-${item.reminderAt}`, title: item.title, body, firedAt: now, moduleType: item.moduleType })
     }
   }
 }

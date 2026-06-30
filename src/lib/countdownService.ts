@@ -33,6 +33,7 @@ function toCountdown(id: string, data: Record<string, unknown>): DateCountdown {
     tags: (data.tags as string[]) || [],
     isFavourite: (data.isFavourite as boolean) || false,
     isPinned: (data.isPinned as boolean) || false,
+    recurrence: (data.recurrence as 'yearly' | 'monthly' | null) || null,  // S6-H
     reminderAt: data.reminderAt as number | undefined,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
     updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : Date.now(),

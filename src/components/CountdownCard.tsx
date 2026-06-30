@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, Bell, Pencil, Trash2, Pin, PinOff } from 'lucide-react'
+import { Star, Bell, Pencil, Trash2, Pin, PinOff, Repeat } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useCountdownStore } from '../stores/countdownStore'
 import ConfirmDialog from './ConfirmDialog'
@@ -74,8 +74,14 @@ export default function CountdownCard({ item, onEdit }: Props) {
             })}
           </p>
           {item.notes && <p className="card-desc">{item.notes}</p>}
-          {item.tags.length > 0 && (
+          {(item.tags.length > 0 || item.recurrence) && (
             <div className="card-tags">
+              {item.recurrence && (
+                <span className="tag-chip" style={{ color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <Repeat size={10} />
+                  {item.recurrence === 'yearly' ? (lang === 'zh' ? '每年' : 'Yearly') : (lang === 'zh' ? '每月' : 'Monthly')}
+                </span>
+              )}
               {item.tags.map((tag) => (
                 <span key={tag} className="tag-chip">{tag}</span>
               ))}

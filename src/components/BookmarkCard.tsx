@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, ExternalLink, Edit2, Trash2, Pin, PinOff, BookOpen, BookMarked } from 'lucide-react'
+import { Star, ExternalLink, Edit2, Trash2, Pin, PinOff, BookOpen, BookMarked, Archive, ArchiveRestore } from 'lucide-react'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useAppStore } from '../stores/appStore'
 import { getDomain } from '../lib/urlMeta'
@@ -55,6 +55,17 @@ export default function BookmarkCard({ bookmark, onEdit }: Props) {
             {bookmark.isRead
               ? <BookMarked size={15} style={{ color: 'var(--color-primary)' }} />
               : <BookOpen size={15} />}
+          </button>
+          {/* S6-E: Archive toggle */}
+          <button
+            className="icon-btn"
+            onClick={() => update(bookmark.id, { isArchived: !bookmark.isArchived })}
+            aria-label={bookmark.isArchived ? '取消封存' : '封存'}
+            title={bookmark.isArchived ? '取消封存' : '封存'}
+          >
+            {bookmark.isArchived
+              ? <ArchiveRestore size={15} style={{ color: 'var(--color-warning)' }} />
+              : <Archive size={15} />}
           </button>
           <button
             className={`icon-btn star-btn ${bookmark.isFavourite ? 'starred' : ''}`}

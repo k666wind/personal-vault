@@ -1,96 +1,100 @@
-# Personal Vault PWA - Sprint 4 HANDOVER
+# Personal Vault PWA — Sprint 6 交接文件
 
-## Sprint 4 完成項目
+## 本次 Sprint 完成項目
 
-### Bug 修復
+### Bug Fixes（Sprint 6 開始前）
+- **BUG-S6-01**：bookmarkService、recipeService、passwordService 的 updateDoc 由 stripUndefined 改為 prepareUpdate（deleteField() sentinel），修正清除 optional fields 失效問題
+- **BUG-S6-02**：移除殘留 buffer npm dependency
+- **BUG-S6-03**：移除殘留 src/types/otplib.d.ts
+- **BUG-S6-04**：vite.config.ts PWA shortcuts URL 加 VITE_BASE_PATH + #/ hash prefix
+- **BUG-S6-05**：HomePage 全局搜尋、收藏、最近更新 加入 passwords（只搜 site/username/tags，唔搜加密內容）
+- **LOGIC-02**：Cook Mode wakeLock 已加 release + visibilitychange 重新獲取邏輯
 
-| ID | 嚴重度 | 描述 | 修法 |
-|----|--------|------|------|
-| BUG-36 | High | useReminderChecker stores 未 init，通知永不 fire | 登入後檢查 unsubscribe state，若未 init 則自動 init stores |
-| BUG-37 | Medium | firebase.ts deprecated enableIndexedDbPersistence | 改用 initializeFirestore + persistentLocalCache + persistentMultipleTabManager |
-| BUG-39 | Medium | MealPlanner removeSlot globalIdx 計算錯誤 | 用 counter-based findIndex 正確找到 per-day index |
-| BUG-40 | Low | Notification fired keys 永不清除 | 加入 pruneOldFiredKeys()（7日截止），在 checker mount 時執行 |
-| L-02 | Low | saveMealPlan 覆蓋 createdAt | 檢查 doc 存在後選擇 updateDoc 或 setDoc |
+⚠️ **LOGIC-01（Firestore Security Rules）需要手動處理** — 詳見下方「需要手動操作」
 
-### 新功能
+### S6-A：筆記 Markdown 工具列 ✅
+NoteModal.tsx 新增 8 個按鈕：粗體、斜體、代碼、標題、清單、引用、分隔線、連結。Cursor-aware 插入邏輯支援 inline wrap 同 block insert，只在編輯模式顯示。
 
-| ID | Feature | 說明 |
-|----|---------|------|
-| F-25 | 書籤 Reading List | BookmarksPage 未讀 filter chip + 計數徽章，BookmarkCard 已讀/未讀 toggle（已讀標題半透明） |
-| F-26 | Quick Capture FAB | HomePage 浮動 FAB，點擊彈出面板，支援 note/bookmark 模式，鍵盤 Enter 提交 |
+### S6-B：書籤 HTML 批量匯入 ✅
+新檔案 src/lib/bookmarkHtmlImport.ts，parse Netscape Bookmark Format（Chrome/Firefox/Safari/Edge）。BookmarksPage 加 Import modal，重複網址自動偵測，batch import 每 10 個一批。
 
----
+### S6-C：Cook Mode 全屏煮食模式 ✅
+新檔案 src/components/CookMode.tsx。Wake Lock API 正確 release，每步驟獨立倒數計時器，份量縮放器，步驟進度。從 RecipeDetailModal 新增 ChefHat icon 進入。
 
-## 已知 Bugs（未修）
+### S6-D：通知收件匣 ✅
+notifications.ts 新增 notificationLog localStorage（最多 50 筆）。新檔案 NotificationInbox.tsx。HomePage 鈴鐺加紅點 unread badge。
 
-| ID | 嚴重度 | 描述 | 位置 |
-|----|--------|------|------|
-| BUG-38 | Medium | unlock() first-time verifier save 邏輯脆弱 | stores/passwordStore.ts |
+### S6-E：書籤封存功能 ✅
+Bookmark type 加 isArchived。BookmarkCard 加封存按鈕。BookmarksPage 預設隱藏已封存，新增「封存」filter chip。
 
----
+### S6-F：搜尋結果高亮 ✅
+新檔案 src/lib/highlight.ts，highlightText() 用 mark wrap 匹配文字（含 HTML escape）。HomePage 全局搜尋套用。
 
-## Risky Patterns（已識別）
+### S6-G：筆記字數統計 ✅
+NoteModal 編輯模式底部顯示字數、詞數、段落數、預計閱讀時間。
 
-| ID | 描述 | 位置 |
-|----|------|------|
-| R-01 | masterPassword 明文存 Zustand state（DevTools 可見） | stores/passwordStore.ts |
-| R-02 | BrowserRouter + basename — GitHub Pages subpath 直接 URL 訪問會 404 | App.tsx |
-| R-03 | HIBP breach check 冇 retry logic，50+ 密碼可能觸發 rate limit | lib/breach.ts |
-| R-05 | WikiLink click 唔檢查 unsaved changes 直接關閉 modal | components/NoteModal.tsx |
+### S6-H：倒數重複週期 ✅
+DateCountdown 加 recurrence 欄位。CountdownModal 加選擇 UI。CountdownCard 顯示標籤。HomePage Pinned Countdowns 用 getNextOccurrence() 自動推算下次發生日期。
 
----
-
-## Logic Issues（已識別）
-
-| ID | 描述 |
-|----|------|
-| L-01 | HomePage + useReminderChecker 重複訂閱同一批 Firestore data（可接受，initFirestore 內部 idempotent） |
-| L-03 | scorePassword 5 個 condition 但上限 min(4, score)，邏輯唔直觀 |
-| L-04 | HomePage theme toggle 只係 light dark，唔支援回到 system |
+### S6-I：Dashboard 區塊自訂 ✅
+appStore 新增 dashboardSections（持久化）。SettingsPage 加排序 + 顯示/隱藏 toggle。HomePage 各 section 用 CSS order + display 套用。
 
 ---
 
-## 重要技術規則
+## 驗證結果
 
-1. tsc --noEmit 必須零錯誤先 build — noUnusedLocals + noUnusedParameters 係 hard error
-2. 唔用 sed -i 做多行改動 — 用 Python script
-3. 唔用 Tailwind 顏色 class — 全部用 inline style={{}} 或 CSS variables
-4. React hooks 必須係 conditional return 之前
-5. HTML form tag 唔用 — 全部用 onClick handler
-6. Emoji 寫入文件用 Python，唔用 str_replace
-7. Share URL 必須用 import.meta.env.VITE_BASE_PATH
-8. Firestore updateDoc 清除 optional field 用 deleteField()
-9. user state 係三態：undefined（載入中）| User（已登入）| null（未登入）
-10. TOTP 係純 Web Crypto API — 唔用任何 npm TOTP library（會引入 Node.js buffer → 白屏）
-11. BrowserRouter + GitHub Pages = 404（R-02，將來需改 HashRouter）
+- tsc --noEmit：零錯誤
+- vite build：成功
+- ESLint：Sprint 6 新增程式碼零錯誤；殘留錯誤均為 Sprint 5 已存在技術債（非本次引入）
 
 ---
 
-## Sprint 5 規劃
+## ⚠️ 需要手動操作
 
-### 高優先新功能
+### Firestore Security Rules（LOGIC-01）
+公開食譜讀取規則順序有風險，請在 Firebase Console 確認規則寫法為：
 
-- F-27: Reminder Snooze — notification 可以 snooze 30min/1hr
-- F-28: WikiLink Backlinks — 筆記底部顯示被哪些筆記連結
-- F-29: Countdown 月曆視圖 — 列表/月曆 toggle
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /recipes/{recipeId} {
+      allow read: if resource.data.isPublic == true || request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
 
-### 中優先
+注意：Firestore Rules 評估順序係「最具體路徑優先」，/recipes/{recipeId} 規則必須出現在 /{document=**} 之前。請手動更新並測試。
 
-- F-30: Meal Planner Copy Week — 一鍵複製上週計劃
-- F-31: 書籤 og:image 預覽 — allorigins.win 抓 og:image
-- F-32: Password 雙擊複製 — 大觸控面積
-- F-33: Dashboard 統計 Widget — 各模組 item 數量
+---
 
-### Low Priority
+## 已知技術債（延續自 Sprint 5）
 
-- F-34: Export 包含 MealPlan — VaultExport version=3
-- F-35: 筆記字數統計 — textarea 右下顯示字數
+| 項目 | 詳情 |
+|------|------|
+| chunk size warning | index-*.js 1.16MB，建議 dynamic import code-split |
+| window.alert() | bulk delete error 仍用 alert() |
+| Date.now() purity lint | React Compiler 新規則標記多處非冪等呼叫，功能正常 |
+| BrowserRouter | PWA shortcuts 已改用 hash route，建議下個 sprint 評估轉 HashRouter |
+| marked v18 / @types/marked v5 版本差距 | 暫時運作正常 |
+
+---
+
+## 下一個 Sprint 可做（未排程）
+
+- S6-J：書籤導出 Netscape HTML 格式
+- S6-K：食譜份量縮放同步更新營養數值
+- S6-L：密碼模組加密安全記事本
 
 ---
 
 ## 開新 Chat 時提供嘅資料
 
 1. 呢份 HANDOVER.md
-2. 最新 ZIP 包（Sprint 4 後的 src/ 資料夾）
-3. 話明係「Personal Vault PWA — Sprint 5」
-4. 指定想做邊個 bug fix / feature
+2. 話明係「Personal Vault PWA Sprint 7」
+3. 指定想做邊個功能，或者話「先處理 Firestore Rules 同技術債」

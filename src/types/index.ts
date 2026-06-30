@@ -97,6 +97,7 @@ export interface Note {
   tags: string[]
   isFavourite: boolean
   isPinned?: boolean   // F-03
+  recurrence?: 'yearly' | 'monthly' | null  // S6-H
   reminderAt?: number
   createdAt: number
   updatedAt: number
@@ -112,6 +113,7 @@ export interface DateCountdown {
   tags: string[]
   isFavourite: boolean
   isPinned?: boolean   // F-03
+  recurrence?: 'yearly' | 'monthly' | null  // S6-H
   reminderAt?: number
   createdAt: number
   updatedAt: number

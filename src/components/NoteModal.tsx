@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { X, Loader2, XCircle, Link } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { X, Loader2, XCircle, Link, Bold, Italic, Code, List, Heading2, Quote, Minus, ExternalLink } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useNoteStore } from '../stores/noteStore'
 import TagInput from './TagInput'
@@ -37,8 +37,18 @@ function sanitizeHtml(html: string): string {
   return doc.body.innerHTML
 }
 
+// S6-A: Markdown toolbar button definitions
+interface ToolbarAction {
+  icon: React.ReactNode
+  label: string
+  prefix: string
+  suffix?: string
+  block?: boolean       // insert on its own line
+  listPrefix?: string   // for list items
+}
+
 export default function NoteModal({ note, onClose, allTags, onSearchNote }: Props) {
-  const { t, user } = useAppStore()
+  const { t, user, settings } = useAppStore()
   const { add, update, notes } = useNoteStore()
 
   const [title, setTitle] = useState(note?.title || '')
@@ -52,13 +62,12 @@ export default function NoteModal({ note, onClose, allTags, onSearchNote }: Prop
   const [markdownPreview, setMarkdownPreview] = useState(false)
   const [renderedMd, setRenderedMd] = useState('')
   const previewRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const isEdit = !!note
+  const lang = settings.language
 
-  // F-11: Build a map of note title → id for WikiLink resolution
   const notesByTitle = new Map(notes.map((n) => [n.title, n.id]))
-
-  // F-11: WikiLink hints (show linked note titles below textarea)
   const wikiLinks = extractWikiLinks(content)
 
   const handleOcr = (text: string) => {
@@ -71,7 +80,6 @@ export default function NoteModal({ note, onClose, allTags, onSearchNote }: Prop
         const { marked } = await import('marked')
         const raw = await marked.parse(content)
         const sanitized = sanitizeHtml(raw)
-        // F-11: render WikiLinks in the preview HTML
         setRenderedMd(renderWikiLinks(sanitized, () => {}, notesByTitle))
       } catch {
         setRenderedMd(`<pre>${content.replace(/</g, '&lt;')}</pre>`)
@@ -80,7 +88,6 @@ export default function NoteModal({ note, onClose, allTags, onSearchNote }: Prop
     setMarkdownPreview(!markdownPreview)
   }
 
-  // F-11: Handle WikiLink clicks via event delegation on the preview div
   useEffect(() => {
     const div = previewRef.current
     if (!div) return
@@ -97,6 +104,57 @@ export default function NoteModal({ note, onClose, allTags, onSearchNote }: Prop
     return () => div.removeEventListener('click', handler)
   }, [markdownPreview, onSearchNote, onClose])
 
+  // S6-A: Insert markdown syntax at cursor position
+  const insertMarkdown = useCallback((action: ToolbarAction) => {
+    const ta = textareaRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const selected = content.slice(start, end)
+    const prefix = action.prefix
+    const suffix = action.suffix ?? action.prefix
+
+    let newText: string
+    let newStart: number
+    let newEnd: number
+
+    if (action.block) {
+      // Block-level: insert on a new line
+      const before = content.slice(0, start)
+      const after = content.slice(end)
+      const needsLeadingNewline = before.length > 0 && !before.endsWith('\n')
+      const leadingNl = needsLeadingNewline ? '\n' : ''
+      const inserted = `${leadingNl}${prefix}${selected}`
+      newText = before + inserted + after
+      newStart = newEnd = start + inserted.length
+    } else {
+      // Inline: wrap selection (or insert placeholder)
+      const placeholder = selected || (lang === 'zh' ? '文字' : 'text')
+      const inserted = `${prefix}${placeholder}${suffix}`
+      newText = content.slice(0, start) + inserted + content.slice(end)
+      newStart = start + prefix.length
+      newEnd = newStart + (selected || placeholder).length
+    }
+
+    setContent(newText)
+    // Restore focus + selection after state update
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(newStart, newEnd)
+    })
+  }, [content, lang])
+
+  const toolbarActions: ToolbarAction[] = [
+    { icon: <Bold size={14} />,         label: lang === 'zh' ? '粗體' : 'Bold',        prefix: '**', suffix: '**' },
+    { icon: <Italic size={14} />,       label: lang === 'zh' ? '斜體' : 'Italic',      prefix: '_',  suffix: '_' },
+    { icon: <Code size={14} />,         label: lang === 'zh' ? '代碼' : 'Code',        prefix: '`',  suffix: '`' },
+    { icon: <Heading2 size={14} />,     label: lang === 'zh' ? '標題' : 'Heading',     prefix: '## ', block: true },
+    { icon: <List size={14} />,         label: lang === 'zh' ? '清單' : 'List',        prefix: '- ',  block: true },
+    { icon: <Quote size={14} />,        label: lang === 'zh' ? '引用' : 'Quote',       prefix: '> ',  block: true },
+    { icon: <Minus size={14} />,        label: lang === 'zh' ? '分隔線' : 'Divider',  prefix: '\n---\n', block: true },
+    { icon: <ExternalLink size={14} />, label: lang === 'zh' ? '連結' : 'Link',        prefix: '[', suffix: '](url)' },
+  ]
+
   const handleSave = async () => {
     if (!title.trim()) { setError(t('note', 'titleRequired')); return }
     setSaving(true)
@@ -106,6 +164,7 @@ export default function NoteModal({ note, onClose, allTags, onSearchNote }: Prop
         content,
         tags,
         isFavourite: note?.isFavourite || false,
+        isPinned: note?.isPinned || false,
         reminderAt: reminderAt ? new Date(reminderAt).getTime() : undefined,
       }
       if (isEdit) {
@@ -150,17 +209,38 @@ export default function NoteModal({ note, onClose, allTags, onSearchNote }: Prop
             />
           </div>
 
-          {/* Content + OCR + Markdown toggle */}
+          {/* Content + toolbar */}
           <div className="field">
             <div className="field-label-row">
               <label className="field-label">{t('note', 'content')}</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button className="btn-add-row" onClick={handlePreviewToggle} style={{ fontSize: 11 }}>
-                  {markdownPreview ? '✏️ ' + t('common', 'edit') : '👁 MD'}
+                  {markdownPreview ? '\u270F\uFE0F ' + t('common', 'edit') : '\uD83D\uDC41 MD'}
                 </button>
                 <OcrButton onExtracted={handleOcr} label={t('note', 'extractFromImage')} />
               </div>
             </div>
+
+            {/* S6-A: Markdown toolbar — only shown in edit mode */}
+            {!markdownPreview && (
+              <div className="md-toolbar">
+                {toolbarActions.map((action, i) => (
+                  <button
+                    key={i}
+                    className="md-toolbar-btn"
+                    title={action.label}
+                    onMouseDown={(e) => {
+                      // Prevent textarea from losing focus before we read selectionStart
+                      e.preventDefault()
+                      insertMarkdown(action)
+                    }}
+                  >
+                    {action.icon}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {markdownPreview ? (
               <div
                 ref={previewRef}
@@ -170,20 +250,40 @@ export default function NoteModal({ note, onClose, allTags, onSearchNote }: Prop
               />
             ) : (
               <textarea
+                ref={textareaRef}
                 className="input note-textarea"
                 placeholder={t('note', 'contentPlaceholder')}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                rows={8}
+                rows={7}
               />
             )}
           </div>
 
-          {/* F-11: WikiLinks hint */}
+
+          {/* S6-G: Word count + reading time */}
+          {!markdownPreview && content && (
+            <div style={{ display: 'flex', gap: 12, marginTop: -8, marginBottom: 4, fontSize: 11, color: 'var(--color-text-3)' }}>
+              {(() => {
+                const words = content.trim().split(/\s+/).filter(Boolean).length
+                const chars = content.length
+                const paragraphs = content.split(/\n\n+/).filter(s => s.trim()).length
+                const readMins = Math.max(1, Math.round(words / 200))
+                return (
+                  <>
+                    <span>{lang === 'zh' ? `${chars} 字` : `${chars} chars`}</span>
+                    <span>{lang === 'zh' ? `${words} 詞` : `${words} words`}</span>
+                    <span>{lang === 'zh' ? `${paragraphs} 段` : `${paragraphs} para`}</span>
+                    <span>{lang === 'zh' ? `約 ${readMins} 分鐘閱讀` : `~${readMins} min read`}</span>
+                  </>
+                )
+              })()}
+            </div>
+          )}
+
+          {/* WikiLinks hint */}
           {wikiLinks.length > 0 && (
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: -8, marginBottom: 4,
-            }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: -8, marginBottom: 4 }}>
               <Link size={12} style={{ color: 'var(--color-text-3)', marginTop: 2 }} />
               {wikiLinks.map((wl, i) => {
                 const exists = notesByTitle.has(wl)

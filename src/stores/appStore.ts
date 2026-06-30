@@ -19,6 +19,10 @@ interface AppStore {
 
   recentItems: Array<{ id: string; moduleType: string; title: string; viewedAt: number }>
   addRecentItem: (item: { id: string; moduleType: string; title: string }) => void
+
+  // S6-I: Dashboard section order + visibility
+  dashboardSections: string[]
+  setDashboardSections: (sections: string[]) => void
 }
 
 export const useAppStore = create<AppStore>()(
@@ -53,10 +57,14 @@ export const useAppStore = create<AppStore>()(
           const updated = [{ ...item, viewedAt: Date.now() }, ...filtered].slice(0, 10)
           return { recentItems: updated }
         }),
+
+      // S6-I: default order matches current HomePage render order
+      dashboardSections: ['reminders', 'pinned', 'favourites', 'recent'],
+      setDashboardSections: (sections) => set({ dashboardSections: sections }),
     }),
     {
       name: 'vault-app-store',
-      partialize: (s) => ({ settings: s.settings, recentItems: s.recentItems }),
+      partialize: (s) => ({ settings: s.settings, recentItems: s.recentItems, dashboardSections: s.dashboardSections }),
       onRehydrateStorage: () => (state) => {
         if (state) state.user = undefined
       },

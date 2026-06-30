@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Clock, Users, ChefHat, Star, Edit2, ShoppingCart, Check, Share2 } from 'lucide-react'
+import CookMode from './CookMode'
 import { useAppStore } from '../stores/appStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import type { Recipe } from '../types'
@@ -15,6 +16,7 @@ export default function RecipeDetailModal({ recipe, onEdit, onShare, onClose }: 
   const { t } = useAppStore()
   const { update, toggleFavourite } = useRecipeStore()
   const [servingMult, setServingMult] = useState(1)
+  const [cookMode, setCookMode] = useState(false)
   const [shoppingList, setShoppingList] = useState<Set<string>>(
     new Set(recipe.ingredients.filter((i) => i.inShoppingList).map((i) => i.id))
   )
@@ -65,6 +67,10 @@ export default function RecipeDetailModal({ recipe, onEdit, onShare, onClose }: 
     hard: 'var(--color-danger)',
   }
 
+  if (cookMode) {
+    return <CookMode recipe={recipe} onClose={() => setCookMode(false)} />
+  }
+
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal modal-tall">
@@ -82,6 +88,10 @@ export default function RecipeDetailModal({ recipe, onEdit, onShare, onClose }: 
                 <Share2 size={18} style={{ color: recipe.isPublic ? "var(--color-success)" : undefined }} />
               </button>
             )}
+            <button className="icon-btn" onClick={() => setCookMode(true)} title={recipe.steps.length === 0 ? '先新增步驟' : '煮食模式'}
+              disabled={recipe.steps.length === 0}>
+              <ChefHat size={18} style={{ color: recipe.steps.length > 0 ? 'var(--color-recipe)' : undefined }} />
+            </button>
             <button className="icon-btn" onClick={onEdit}><Edit2 size={18} /></button>
             <button className="icon-btn" onClick={onClose}><X size={20} /></button>
           </div>

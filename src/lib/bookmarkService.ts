@@ -1,7 +1,7 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, onSnapshot, serverTimestamp,
-  Timestamp,
+  Timestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Bookmark } from '../types'
@@ -11,6 +11,14 @@ import type { Bookmark } from '../types'
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
+// BUG-S6-01 FIX: For updateDoc, keys whose value is undefined must become
+// deleteField() so Firestore actually removes the old value (e.g. clearing readAt).
+function prepareUpdate(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, v === undefined ? deleteField() : v])
   )
 }
 
@@ -29,6 +37,7 @@ function toBookmark(id: string, data: Record<string, unknown>): Bookmark {
     isPinned: (data.isPinned as boolean) || false,
     isRead: (data.isRead as boolean) || false,
     readAt: data.readAt as number | undefined,
+    isArchived: (data.isArchived as boolean) || false,   // S6-E
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
     updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toMillis() : Date.now(),
   }
@@ -67,10 +76,11 @@ export async function updateBookmark(
   id: string,
   data: Partial<Omit<Bookmark, 'id' | 'userId' | 'createdAt'>>
 ) {
-  await updateDoc(doc(db, COL, id), stripUndefined({ 
+  // BUG-S6-01 FIX: use prepareUpdate so clearing optional fields (readAt etc) works
+  await updateDoc(doc(db, COL, id), prepareUpdate({
     ...data,
     updatedAt: serverTimestamp(),
-   } as Record<string, unknown>))
+  } as Record<string, unknown>))
 }
 
 export async function deleteBookmark(id: string) {

@@ -1,17 +1,23 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Star, Bell, Settings, X, Sun, Moon, Plus, Link, FileText, ChevronUp, Pin } from 'lucide-react'
+import NotificationInbox from '../components/NotificationInbox'
+import { getUnreadNotificationCount } from '../lib/notifications'
+import { highlightText } from '../lib/highlight'
 import { useAppStore } from '../stores/appStore'
 import { useBookmarkStore } from '../stores/bookmarkStore'
 import { useNoteStore } from '../stores/noteStore'
 import { useRecipeStore } from '../stores/recipeStore'
 import { useCountdownStore } from '../stores/countdownStore'
+import { usePasswordStore } from '../stores/passwordStore'
 
 export default function HomePage() {
-  const { t, user, settings, setLanguage, setTheme } = useAppStore()
+  const { t, user, settings, setLanguage, setTheme, dashboardSections } = useAppStore()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [showCapture, setShowCapture] = useState(false)
+  const [showInbox, setShowInbox] = useState(false)
+  const [unreadNotifCount, setUnreadNotifCount] = useState(() => getUnreadNotificationCount())
   const [captureTitle, setCaptureTitle] = useState('')
   const [captureUrl, setCaptureUrl] = useState('')
   const [captureMode, setCaptureMode] = useState<'note' | 'bookmark'>('note')
@@ -21,6 +27,7 @@ export default function HomePage() {
   const { notes, init: initNt, teardown: tearNt, add: addNote } = useNoteStore()
   const { recipes, init: initRc, teardown: tearRc } = useRecipeStore()
   const { items: countdowns, subscribe: subCd, cleanup: cleanCd } = useCountdownStore()
+  const { entries: passwords, init: initPw, teardown: tearPw } = usePasswordStore()
 
   useEffect(() => {
     if (!user) return
@@ -28,8 +35,11 @@ export default function HomePage() {
     initNt(user.uid)
     initRc(user.uid)
     subCd(user.uid)
-    return () => { tearBm(); tearNt(); tearRc(); cleanCd() }
+    initPw(user.uid)
+    return () => { tearBm(); tearNt(); tearRc(); cleanCd(); tearPw() }
   }, [user?.uid])
+
+  const refreshUnread = useCallback(() => setUnreadNotifCount(getUnreadNotificationCount()), [])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? t('home', 'goodMorning') : hour < 18 ? t('home', 'goodAfternoon') : t('home', 'goodEvening')
@@ -73,8 +83,13 @@ export default function HomePage() {
       if (c.title.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q) || c.tags.some(tg => tg.includes(q)))
         results.push({ id: c.id, module: 'countdown', title: c.title, subtitle: new Date(c.targetDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }), route: '/countdown' })
     })
+    // BUG-S6-05 FIX: include passwords in global search (search site + username + tags only, not encrypted content)
+    passwords.forEach((p) => {
+      if (p.site.toLowerCase().includes(q) || p.username.toLowerCase().includes(q) || p.tags.some(tg => tg.includes(q)))
+        results.push({ id: p.id, module: 'password', title: p.site, subtitle: p.username, route: '/passwords' })
+    })
     return results.slice(0, 10)
-  }, [searchQuery, bookmarks, notes, recipes, countdowns, locale])
+  }, [searchQuery, bookmarks, notes, recipes, countdowns, passwords, locale])
 
   // ── Favourites ─────────────────────────────────────────
   const favourites = useMemo(() => {
@@ -83,8 +98,9 @@ export default function HomePage() {
     notes.filter(n => n.isFavourite).forEach(n => result.push({ id: n.id, module: 'note', title: n.title, route: '/notes' }))
     recipes.filter(r => r.isFavourite).forEach(r => result.push({ id: r.id, module: 'recipe', title: r.title, route: '/recipes' }))
     countdowns.filter(c => c.isFavourite).forEach(c => result.push({ id: c.id, module: 'countdown', title: c.title, route: '/countdown' }))
+    passwords.filter(p => p.isFavourite).forEach(p => result.push({ id: p.id, module: 'password', title: p.site, route: '/passwords' }))
     return result.slice(0, 6)
-  }, [bookmarks, notes, recipes, countdowns])
+  }, [bookmarks, notes, recipes, countdowns, passwords])
 
   // ── Reminders — sorted soonest first, show year ────────
   const reminders = useMemo(() => {
@@ -108,16 +124,39 @@ export default function HomePage() {
     notes.forEach(n => all.push({ id: n.id, module: 'note', title: n.title, updatedAt: n.updatedAt, route: '/notes' }))
     recipes.forEach(r => all.push({ id: r.id, module: 'recipe', title: r.title, updatedAt: r.updatedAt, route: '/recipes' }))
     countdowns.forEach(c => all.push({ id: c.id, module: 'countdown', title: c.title, updatedAt: c.updatedAt, route: '/countdown' }))
+    passwords.forEach(p => all.push({ id: p.id, module: 'password', title: p.site, updatedAt: p.updatedAt, route: '/passwords' }))
     return all.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 6)
-  }, [bookmarks, notes, recipes, countdowns])
+  }, [bookmarks, notes, recipes, countdowns, passwords])
+
+  // S6-H: Compute next occurrence for recurring countdowns
+  const getNextOccurrence = (c: typeof countdowns[0]): number => {
+    if (!c.recurrence) return c.targetDate
+    const today = new Date(); today.setHours(0,0,0,0)
+    const base = new Date(c.targetDate)
+    if (c.recurrence === 'yearly') {
+      const next = new Date(base)
+      next.setFullYear(today.getFullYear())
+      if (next < today) next.setFullYear(today.getFullYear() + 1)
+      return next.getTime()
+    }
+    if (c.recurrence === 'monthly') {
+      const next = new Date(base)
+      next.setFullYear(today.getFullYear()); next.setMonth(today.getMonth())
+      if (next < today) next.setMonth(next.getMonth() + 1)
+      return next.getTime()
+    }
+    return c.targetDate
+  }
 
   // Pinned countdowns — sorted upcoming first, past last
   const pinnedCountdowns = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const todayMs = today.getTime()
     const pinned = countdowns.filter(c => c.isPinned)
-    const upcoming = pinned.filter(c => c.targetDate >= todayMs).sort((a, b) => a.targetDate - b.targetDate)
-    const past = pinned.filter(c => c.targetDate < todayMs).sort((a, b) => b.targetDate - a.targetDate)
+    // S6-H: use next occurrence for recurring
+    const withNext = pinned.map(c => ({ c, next: getNextOccurrence(c) }))
+    const upcoming = withNext.filter(x => x.next >= todayMs).sort((a, b) => a.next - b.next).map(x => x.c)
+    const past = withNext.filter(x => x.next < todayMs).sort((a, b) => b.next - a.next).map(x => x.c)
     return [...upcoming, ...past].slice(0, 5)
   }, [countdowns])
 
@@ -192,6 +231,15 @@ export default function HomePage() {
             title={settings.theme === 'light' ? t('settings', 'themeDark') : t('settings', 'themeLight')}>
             {settings.theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
+          <button className="icon-btn" style={{ position: 'relative' }} onClick={() => setShowInbox(true)}>
+            <Bell size={20} />
+            {unreadNotifCount > 0 && (
+              <span style={{
+                position: 'absolute', top: 2, right: 2, width: 8, height: 8,
+                background: 'var(--color-danger)', borderRadius: '50%',
+              }} />
+            )}
+          </button>
           <button className="icon-btn" onClick={() => navigate('/settings')}><Settings size={20} /></button>
         </div>
       </header>
@@ -217,8 +265,8 @@ export default function HomePage() {
                     {moduleLabel[r.module]}
                   </span>
                   <div className="result-text">
-                    <span className="result-title">{r.title}</span>
-                    {r.subtitle && <span className="result-subtitle">{r.subtitle}</span>}
+                    <span className="result-title" dangerouslySetInnerHTML={{ __html: highlightText(r.title, searchQuery) }} />
+                    {r.subtitle && <span className="result-subtitle" dangerouslySetInnerHTML={{ __html: highlightText(r.subtitle, searchQuery) }} />}
                   </div>
                 </button>
               ))}
@@ -228,9 +276,10 @@ export default function HomePage() {
       )}
 
       {!searchQuery && (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* S6-I: sections rendered in user-defined order */}
           {/* Reminders — soonest first, with year */}
-          <section className="home-section">
+          <section className="home-section" style={{ order: dashboardSections.indexOf('reminders') >= 0 ? dashboardSections.indexOf('reminders') : 99, display: dashboardSections.includes('reminders') ? undefined : 'none' }}>
             <div className="section-header">
               <Bell size={14} /><h2>{t('common', 'reminders')}</h2>
               <button className="section-add-btn" onClick={() => navigate('/notes?action=add')}>
@@ -258,8 +307,7 @@ export default function HomePage() {
           </section>
 
           {/* Pinned Countdowns */}
-          {pinnedCountdowns.length > 0 && (
-            <section className="home-section">
+          <section className="home-section" style={{ order: dashboardSections.indexOf('pinned') >= 0 ? dashboardSections.indexOf('pinned') : 99, display: pinnedCountdowns.length === 0 || !dashboardSections.includes('pinned') ? 'none' : undefined }}>
               <div className="section-header">
                 <Pin size={14} style={{ color: 'var(--color-primary)' }} />
                 <h2>{settings.language === 'zh' ? '置頂日子' : 'Pinned Dates'}</h2>
@@ -278,19 +326,18 @@ export default function HomePage() {
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                         <p className="reminder-item-title">{c.title}</p>
                         <p className="reminder-item-time" style={{ color: isToday ? 'var(--color-success)' : isPast ? 'var(--color-text-3)' : 'var(--color-primary)' }}>
-                          {new Date(c.targetDate).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}
-                          {' · '}{formatCountdownDiff(c.targetDate)}
+                          {new Date(getNextOccurrence(c)).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}
+                          {' · '}{formatCountdownDiff(getNextOccurrence(c))}
                         </p>
                       </div>
                     </button>
                   )
                 })}
               </div>
-            </section>
-          )}
+          </section>
 
           {/* Favourites */}
-          <section className="home-section">
+          <section className="home-section" style={{ order: dashboardSections.indexOf('favourites') >= 0 ? dashboardSections.indexOf('favourites') : 99, display: dashboardSections.includes('favourites') ? undefined : 'none' }}>
             <div className="section-header">
               <Star size={14} /><h2>{t('common', 'favourites')}</h2>
             </div>
@@ -311,8 +358,7 @@ export default function HomePage() {
           </section>
 
           {/* Recently updated */}
-          {recentlyUpdated.length > 0 && (
-            <section className="home-section">
+          <section className="home-section" style={{ order: dashboardSections.indexOf('recent') >= 0 ? dashboardSections.indexOf('recent') : 99, display: recentlyUpdated.length === 0 || !dashboardSections.includes('recent') ? 'none' : undefined }}>
               <div className="section-header">
                 <Bell size={14} style={{ opacity: 0 }} />
                 <h2>{settings.language === 'en' ? 'Recently Updated' : '最近更新'}</h2>
@@ -329,8 +375,7 @@ export default function HomePage() {
                 ))}
               </div>
             </section>
-          )}
-        </>
+        </div>
       )}
       {/* F-26: Quick Capture FAB */}
       {showCapture && (
@@ -416,6 +461,11 @@ export default function HomePage() {
       >
         {showCapture ? <ChevronUp size={24} /> : <Plus size={24} />}
       </button>
+
+      {/* S6-D: Notification Inbox */}
+      {showInbox && (
+        <NotificationInbox onClose={() => { setShowInbox(false); refreshUnread() }} />
+      )}
     </div>
   )
 }

@@ -37,6 +37,7 @@ export default function CountdownModal({ item, onClose, allTags }: Props) {
   const [reminderAt, setReminderAt] = useState<string>(
     item?.reminderAt ? new Date(item.reminderAt).toISOString().slice(0, 16) : ''
   )
+  const [recurrence, setRecurrence] = useState<'yearly' | 'monthly' | null>(item?.recurrence || null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -56,6 +57,7 @@ export default function CountdownModal({ item, onClose, allTags }: Props) {
         targetDate: localDateToMs(targetDate),
         tags,
         isFavourite: item?.isFavourite || false,
+        recurrence,  // S6-H
         reminderAt: reminderAt ? new Date(reminderAt).getTime() : undefined,
       }
       if (isEdit) {
@@ -107,6 +109,33 @@ export default function CountdownModal({ item, onClose, allTags }: Props) {
               value={targetDate}
               onChange={(e) => setTargetDate(e.target.value)}
             />
+          </div>
+
+
+          <div className="field">
+            <label className="field-label">
+              {t('countdown', 'recurrence') || (t('common', 'notes') === '備註' ? '重複週期' : 'Recurrence')}
+              <span className="optional-hint"> {t('common', 'optional')}</span>
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['yearly', 'monthly', null] as const).map((r) => (
+                <button
+                  key={String(r)}
+                  onClick={() => setRecurrence(r)}
+                  style={{
+                    flex: 1, padding: '7px 0', borderRadius: 'var(--radius-md)', fontSize: 13,
+                    fontWeight: recurrence === r ? 700 : 400,
+                    background: recurrence === r ? 'var(--color-primary)' : 'var(--color-bg)',
+                    color: recurrence === r ? '#fff' : 'var(--color-text-2)',
+                    border: '1.5px solid ' + (recurrence === r ? 'var(--color-primary)' : 'var(--color-border)'),
+                  }}
+                >
+                  {r === 'yearly' ? (t('common', 'notes') === '備註' ? '每年' : 'Yearly') :
+                   r === 'monthly' ? (t('common', 'notes') === '備註' ? '每月' : 'Monthly') :
+                   (t('common', 'notes') === '備註' ? '不重複' : 'None')}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="field">

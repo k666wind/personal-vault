@@ -1725,3 +1725,73 @@ textarea.input {
 .markdown-preview [data-wikilink]:hover {
   text-decoration: underline;
 }
+
+/* ── S6-A: Markdown Toolbar ─────────────────────────────── */
+.md-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  flex-wrap: wrap;
+}
+.md-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-2);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.md-toolbar-btn:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+.note-textarea.with-toolbar {
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+/* When toolbar present, textarea loses top radius */
+.md-toolbar + textarea {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+/* ── S6-B: Bookmark Import ──────────────────────────────── */
+.import-drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.import-drop-zone:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+/* ── S6-D: Notification Inbox ───────────────────────────── */
+/* badge dot handled inline */
+
+/* ── S6-F: Search Highlight ─────────────────────────────── */
+.search-highlight {
+  background: #fef08a;
+  color: #713f12;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 600;
+}
+[data-theme="dark"] .search-highlight {
+  background: #854d0e;
+  color: #fef9c3;
+}

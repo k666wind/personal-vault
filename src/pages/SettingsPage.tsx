@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { requestNotificationPermission, getNotificationPermission } from '../lib/notifications'
-import { ChevronLeft, Eye, EyeOff, Download, Upload, Loader2, Sun, Moon, Bell } from 'lucide-react'
+import { ChevronLeft, Eye, EyeOff, Download, Upload, Loader2, Sun, Moon, Bell, GripVertical, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useAuth } from '../hooks/useAuth'
 import { useBookmarkStore } from '../stores/bookmarkStore'
@@ -19,7 +19,7 @@ import { addRecipe } from '../lib/recipeService'
 import { addPasswordEntry } from '../lib/passwordService'
 
 export default function SettingsPage() {
-  const { t, settings, setLanguage, setTheme, setClaudeApiKey, setLockTimeout, user } = useAppStore()
+  const { t, settings, setLanguage, setTheme, setClaudeApiKey, setLockTimeout, user, dashboardSections, setDashboardSections } = useAppStore()
   const { signOut } = useAuth()
   const navigate = useNavigate()
   const [showApiKey, setShowApiKey] = useState(false)
@@ -257,6 +257,72 @@ export default function SettingsPage() {
               {extImportMsg}
             </p>
           )}
+        </div>
+
+
+        {/* S6-I: Dashboard Section Order */}
+        <div className="settings-section">
+          <p className="settings-label">
+            {settings.language === 'zh' ? '主頁區塊順序' : 'Dashboard Sections'}
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-3)', marginBottom: 10 }}>
+            {settings.language === 'zh' ? '點擊開關顯示／隱藏各區塊' : 'Toggle visibility of each section'}
+          </p>
+          {(['reminders', 'pinned', 'favourites', 'recent'] as const).map((sec, i) => {
+            const labels: Record<string, string> = {
+              reminders: settings.language === 'zh' ? '提醒' : 'Reminders',
+              pinned: settings.language === 'zh' ? '置頂日子' : 'Pinned Dates',
+              favourites: settings.language === 'zh' ? '收藏' : 'Favourites',
+              recent: settings.language === 'zh' ? '最近更新' : 'Recently Updated',
+            }
+            const isVisible = dashboardSections.includes(sec)
+            const currentIdx = dashboardSections.indexOf(sec)
+            return (
+              <div key={sec} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 0', borderBottom: i < 3 ? '1px solid var(--color-border)' : 'none',
+              }}>
+                <GripVertical size={15} style={{ color: 'var(--color-text-3)', flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 14 }}>{labels[sec]}</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    className="icon-btn"
+                    disabled={currentIdx <= 0}
+                    onClick={() => {
+                      const arr = [...dashboardSections]
+                      const idx = arr.indexOf(sec)
+                      if (idx > 0) { [arr[idx-1], arr[idx]] = [arr[idx], arr[idx-1]]; setDashboardSections(arr) }
+                    }}
+                    style={{ fontSize: 11, opacity: currentIdx <= 0 ? 0.3 : 1 }}
+                  >▲</button>
+                  <button
+                    className="icon-btn"
+                    disabled={currentIdx >= dashboardSections.length - 1 || !isVisible}
+                    onClick={() => {
+                      const arr = [...dashboardSections]
+                      const idx = arr.indexOf(sec)
+                      if (idx < arr.length - 1) { [arr[idx], arr[idx+1]] = [arr[idx+1], arr[idx]]; setDashboardSections(arr) }
+                    }}
+                    style={{ fontSize: 11, opacity: (currentIdx >= dashboardSections.length - 1 || !isVisible) ? 0.3 : 1 }}
+                  >▼</button>
+                  <button
+                    className="icon-btn"
+                    onClick={() => {
+                      if (isVisible) {
+                        setDashboardSections(dashboardSections.filter(s => s !== sec))
+                      } else {
+                        setDashboardSections([...dashboardSections, sec])
+                      }
+                    }}
+                  >
+                    {isVisible
+                      ? <ToggleRight size={20} style={{ color: 'var(--color-primary)' }} />
+                      : <ToggleLeft size={20} style={{ color: 'var(--color-text-3)' }} />}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {/* F-07: Notification Permission */}

@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, onSnapshot, serverTimestamp, Timestamp,
+  query, where, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { PasswordEntry } from '../types'
@@ -10,6 +10,13 @@ import type { PasswordEntry } from '../types'
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined)
+  )
+}
+
+// BUG-S6-01 FIX: For updateDoc, undefined values must become deleteField()
+function prepareUpdate(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, v === undefined ? deleteField() : v])
   )
 }
 
@@ -60,7 +67,8 @@ export async function addPasswordEntry(
 }
 
 export async function updatePasswordEntry(id: string, data: Partial<Omit<PasswordEntry, 'id' | 'userId' | 'createdAt'>>) {
-  await updateDoc(doc(db, COL, id), stripUndefined({  ...data, updatedAt: serverTimestamp()  } as Record<string, unknown>))
+  // BUG-S6-01 FIX: use prepareUpdate so clearing expiresAt/totpSecret works
+  await updateDoc(doc(db, COL, id), prepareUpdate({ ...data, updatedAt: serverTimestamp() } as Record<string, unknown>))
 }
 
 export async function deletePasswordEntry(id: string) {
