@@ -67,6 +67,7 @@ export interface Bookmark {
   isPinned?: boolean   // F-03
   isRead?: boolean     // future F-09
   readAt?: number      // future F-09
+  isArchived?: boolean // S6-E
   createdAt: number
   updatedAt: number
 }

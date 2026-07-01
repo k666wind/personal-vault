@@ -29,6 +29,7 @@ export default function CountdownCard({ item, onEdit }: Props) {
 
   // BUG-31 FIX: derive locale from settings.language, consistent with other components
   const locale = settings.language === 'en' ? 'en-GB' : 'zh-HK'
+  const lang = settings.language
 
   const accentColor = isPast
     ? 'var(--color-error)'
